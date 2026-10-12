@@ -38,6 +38,11 @@ describe('parseVoiceAgentCommand', (): void => {
         expect(parseVoiceAgentCommand('please start up a new agent to check the due dates')).toEqual(O.some('check the due dates'))
     })
 
+    it('skips spoken filler before the trigger', (): void => {
+        expect(parseVoiceAgentCommand('Um, spin up an agent to list this folder.')).toEqual(O.some('list this folder.'))
+        expect(parseVoiceAgentCommand('Uh. Okay, so spin up an agent to list this folder')).toEqual(O.some('list this folder'))
+    })
+
     it('ignores ordinary speech, including the phrase mid-sentence', (): void => {
         expect(parseVoiceAgentCommand('I had tea this morning.')).toEqual(O.none)
         expect(parseVoiceAgentCommand('Maybe later I will spin up an agent to do it.')).toEqual(O.none)

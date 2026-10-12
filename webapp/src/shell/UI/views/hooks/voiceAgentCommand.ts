@@ -39,8 +39,9 @@ export function takeCompletedUtterances(tokens: readonly UtteranceToken[], curso
 }
 
 // "spin up an agent to …", "spawn an agent that …", "start up a new agent to …".
+// Leading filler ("um, okay, so …") is skipped — speech rarely starts cleanly.
 const AGENT_COMMAND_RE: RegExp =
-    /^(?:(?:ok(?:ay)?|hey|please)[,.]?\s+)*(?:spin\s+up|start\s+up|fire\s+up|spawn|launch|start)\s+(?:an?|another)\s+(?:new\s+)?agent\s+(?:to|that|which|for)\s+(.+)$/is
+    /^(?:(?:u+[hm]+|e+r+m*|h+m+|ok(?:ay)?|hey|please|so|well|and|now|right|alright)[,.!]?\s+)*(?:spin\s+up|start\s+up|fire\s+up|spawn|launch|start)\s+(?:an?|another)\s+(?:new\s+)?agent\s+(?:to|that|which|for)\s+(.+)$/is
 
 /** The task description if the utterance is an agent command, else none. */
 export function parseVoiceAgentCommand(utterance: string): O.Option<string> {
