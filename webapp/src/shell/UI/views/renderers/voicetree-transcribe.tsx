@@ -7,6 +7,8 @@ import getAPIKey, { prefetchAPIKey } from "@/utils/get-api-key";
 import { onVoiceResult, appendManualText, reset as resetTranscriptionStore, subscribe as subscribeToTranscription, getDisplayTokenCount } from "@/shell/edge/UI-edge/state/stores/TranscriptionStore";
 import type {} from "@/shell/hostApi";
 import { initVoiceRecording, disposeVoiceRecording } from "@/shell/edge/UI-edge/state/controllers/VoiceRecordingController";
+import { listenForVoiceAgentCommands } from "@/shell/edge/UI-edge/state/controllers/SpokenSpawnListener";
+import type { VTSettings } from "@vt/graph-model/settings";
 import { SseStatusPanel } from "@/shell/UI/sse-status-panel";
 import { hostCapabilities } from "@/shell/runtimeCapabilities";
 import { ControlRow, ErrorMessages, TranscriptionOverlay, type InputMode } from "./voicetree-transcribe/presentation";
@@ -81,7 +83,9 @@ export default function VoiceTreeTranscribe(): JSX.Element {
     connectionError,
     reset: resetSender,
   } = useTranscriptionSender({
-    endpoint: backendPort ? `http://localhost:${backendPort}/send-text` : "http://localhost:8001/send-text",
+    endpoint: !hostCapabilities().textToTree
+      ? null
+      : backendPort ? `http://localhost:${backendPort}/send-text` : "http://localhost:8001/send-text",
   });
 
 
@@ -155,6 +159,18 @@ export default function VoiceTreeTranscribe(): JSX.Element {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleStartTranscription is stable, adding it causes infinite re-registration
   }, [state, stopTranscription, cancelTranscription]);
+
+  // Spoken "spin up an agent to …" runs an agent on the selected nodes.
+  useEffect(() => listenForVoiceAgentCommands(), []);
+
+  // Mic live on open, when the user has opted in (settings.autoStartVoiceRecording).
+  useEffect(() => {
+    if (!voiceInputSupported) return;
+    void window.hostAPI?.main.loadSettings().then((settings: VTSettings) => {
+      if (settings.autoStartVoiceRecording) void handleStartTranscription();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; handleStartTranscription is stable
+  }, []);
 
   // Show error popup when Soniox fails
   useEffect(() => {

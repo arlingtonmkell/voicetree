@@ -50,6 +50,14 @@ export interface RuntimeCapabilities {
      * route yet, so the browser hides the Ask toggle rather than silently no-op.
      */
     readonly askMode: boolean
+    /**
+     * Text-to-tree: streaming transcripts to the Python server's /send-text so
+     * speech becomes nodes. Native only — Electron spawns that server; browser
+     * mode (`vt webapp`) does not, so the browser skips the send instead of
+     * reporting a permanently "offline" server. Voice still reaches the focused
+     * editor/terminal and spoken agent commands.
+     */
+    readonly textToTree: boolean
 }
 
 export const ELECTRON_CAPABILITIES: RuntimeCapabilities = {
@@ -61,6 +69,7 @@ export const ELECTRON_CAPABILITIES: RuntimeCapabilities = {
     usageObservability: true,
     nativeMicrophoneSettings: true,
     askMode: true,
+    textToTree: true,
 }
 
 export const BROWSER_CAPABILITIES: RuntimeCapabilities = {
@@ -78,6 +87,7 @@ export const BROWSER_CAPABILITIES: RuntimeCapabilities = {
     usageObservability: false,
     nativeMicrophoneSettings: false,
     askMode: false,
+    textToTree: false,
 }
 
 /**

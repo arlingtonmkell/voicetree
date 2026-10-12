@@ -62,6 +62,7 @@ export function projectBrowserSafeSettings(s: VTSettings): VTSettings {
     terminalScrollStrategy: s.terminalScrollStrategy,
     defaultAgent: s.defaultAgent,
     notifyOnAgentCompletion: s.notifyOnAgentCompletion,
+    autoStartVoiceRecording: s.autoStartVoiceRecording,
     showFps: s.showFps,
     layoutConfig: s.layoutConfig,
     // EXCLUDED secrets/host concerns — emptied (INJECT_ENV_VARS is required,

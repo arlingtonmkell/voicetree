@@ -11,7 +11,8 @@ import {
 import { subscribe as subscribeToStore, getFinalTokens } from "@/shell/edge/UI-edge/state/stores/TranscriptionStore";
 
 interface UseTranscriptionSenderOptions {
-  endpoint: string;
+  /** /send-text URL of the text-to-tree server, or null when the host has none (browser mode). */
+  endpoint: string | null;
 }
 
 interface UseTranscriptionSenderReturn {
@@ -59,6 +60,7 @@ export function useTranscriptionSender({
   // Core sending function - sends directly to server (no preview logic)
   const sendToServer: (text: string, forceFlush?: boolean) => Promise<void> = useCallback(async (text: string, forceFlush: boolean = false): Promise<void> => {
     if (!text.trim()) return;
+    if (endpoint === null) return;
 
     setIsProcessing(true);
 
