@@ -38,6 +38,7 @@ import {
     type GraphGetPreviewContainedNodeIds,
     type GraphOpenProject,
     type GraphRemoveStarredFolder,
+    type GraphSetFolderState,
     type GraphSetWriteFolderPath,
     type GraphWriteMarkdownFile,
     type GraphWritePositions,
@@ -221,6 +222,24 @@ export function buildGraphGatewayRoutes(deps: GraphGatewayDeps): readonly RpcRou
                     throw new Error('setWriteFolderPath: path is outside the project allowlist')
                 }
                 return json(await client.setWriteFolderPath(path))
+            },
+        },
+        {
+            name: M.setFolderState,
+            inputShape: {
+                folderId: z.string(),
+                state: z.enum(['expanded', 'collapsed', 'hidden']),
+            },
+            handler: async (args): Promise<ToolResponse> => {
+                const {folderId, state} = args as unknown as GraphSetFolderState.Request
+                const sessionId: string = await ensureSession()
+                // graphd keys folder state by path without the trailing slash that
+                // folder node ids carry.
+                const folderPath: string = folderId.length > 1 && folderId.endsWith('/')
+                    ? folderId.slice(0, -1)
+                    : folderId
+                await client.setFolderState(sessionId, folderPath, state)
+                return json(await client.getProjectedGraph(sessionId))
             },
         },
 

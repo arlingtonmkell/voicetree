@@ -271,6 +271,7 @@ export function setupFolderHandles(cy: Core): void {
         eyeBtn.type = 'button';
         eyeBtn.className = BUTTON_EYE_CLASS;
         eyeBtn.setAttribute('aria-label', 'View folder note');
+        eyeBtn.title = 'View folder note';
         eyeBtn.innerHTML = EYE_SVG;
         eyeBtn.addEventListener('click', (evt: MouseEvent): void => {
             evt.stopPropagation();
@@ -337,6 +338,7 @@ export function setupFolderHandles(cy: Core): void {
         const isCollapsed: boolean = (node as NodeSingular).data('collapsed') === true;
         if (entry.chevronCollapsed !== isCollapsed) {
             entry.chevronBtn.innerHTML = isCollapsed ? CHEVRON_RIGHT_SVG : CHEVRON_DOWN_SVG;
+            entry.chevronBtn.title = isCollapsed ? 'Expand folder' : 'Collapse folder';
             entry.chevronCollapsed = isCollapsed;
         }
     }

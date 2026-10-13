@@ -143,6 +143,24 @@ describe('graph.* gateway routes (real graphd roundtrip)', () => {
         expect(viaGateway.nodes.length).toBe(direct.nodes.length)
     })
 
+    test('graph.setFolderState is observable in the session folder state; a trailing slash is accepted', async () => {
+        const sid = (await invoke(M.openProject) as {sessionId: string}).sessionId
+        const folder = path.join(project, 'notes')
+        await mkdir(folder)
+        await invoke(M.writeMarkdownFile, {
+            absolutePath: path.join(folder, 'inside.md'),
+            body: '# Inside\n',
+            editorId: 'gateway-test',
+        })
+
+        const collapsed = await invoke(M.setFolderState, {folderId: `${folder}/`, state: 'collapsed'}) as {nodes: unknown[]}
+        expect(Array.isArray(collapsed.nodes)).toBe(true)
+        expect((await client.getFolderState(sid)).folderState).toContainEqual([folder, 'collapsed'])
+
+        await invoke(M.setFolderState, {folderId: folder, state: 'expanded'})
+        expect((await client.getFolderState(sid)).folderState).toContainEqual([folder, 'expanded'])
+    })
+
     // --- Folders (browser-mode daemon-served folder browser) -----------------
 
     test('graph.getFolderTreeSync returns the project root tree + project paths', async () => {

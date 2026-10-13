@@ -29,6 +29,7 @@ import {
     type GraphUndo,
     type GraphRedo,
     type GraphSetWriteFolderPath,
+    type GraphSetFolderState,
     type GraphListViews,
     type GraphActivateView,
     type GraphCloneView,
@@ -120,6 +121,10 @@ export const vtdRedo =
 
 export const vtdSetWriteFolderPath =
     graphCall<[path: string], GraphSetWriteFolderPath.Response>(M.setWriteFolderPath, (path) => ({path}))
+
+export const vtdSetFolderState =
+    graphCall<[folderId: string, state: GraphSetFolderState.Request['state']], GraphSetFolderState.Response>(
+        M.setFolderState, (folderId, state) => ({folderId, state}))
 
 // ── Views ─────────────────────────────────────────────────────────────────────
 export const vtdListViews =

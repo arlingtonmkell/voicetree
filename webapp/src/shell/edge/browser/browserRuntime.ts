@@ -34,6 +34,7 @@ import {
     vtdOpenProject,
     vtdRedo,
     vtdSetWriteFolderPath,
+    vtdSetFolderState,
     vtdUndo,
     vtdWriteMarkdownFile,
     vtdWritePositions,
@@ -171,12 +172,14 @@ export function buildBrowserRuntime(cfg: BrowserDaemonConfig, sessionId: string)
         getNode: (nodeId: string) => vtdGetNode(vtdUrl, vtdToken, nodeId),
         reconcileGraphWithDisk: (): Promise<void> =>
             callVtdRpc(vtdUrl, vtdToken, 'reconcileGraphWithDisk', {}),
-        collapseFolderThroughDaemon: (p: unknown) =>
-            callVtdRpc(vtdUrl, vtdToken, 'collapseFolderThroughDaemon', p as Record<string, unknown>),
-        expandFolderThroughDaemon: (p: unknown) =>
-            callVtdRpc(vtdUrl, vtdToken, 'expandFolderThroughDaemon', p as Record<string, unknown>),
-        setFolderStateThroughDaemon: (p: unknown) =>
-            callVtdRpc(vtdUrl, vtdToken, 'setFolderStateThroughDaemon', p as Record<string, unknown>),
+        // Folder collapse/expand/hide is session state in graphd; the gateway
+        // sets it and returns the re-projected graph for the caller to render.
+        collapseFolderThroughDaemon: (folderId: string) =>
+            vtdSetFolderState(vtdUrl, vtdToken, folderId, 'collapsed'),
+        expandFolderThroughDaemon: (folderId: string) =>
+            vtdSetFolderState(vtdUrl, vtdToken, folderId, 'expanded'),
+        setFolderStateThroughDaemon: (folderId: string, state: 'expanded' | 'collapsed' | 'hidden') =>
+            vtdSetFolderState(vtdUrl, vtdToken, folderId, state),
         // cy.nodes().jsons() is a NodeDefinition[]; the gateway's writePositions
         // wants {positions: {nodeId: {x, y}}}. Transform before sending.
         saveNodePositions: (payload: unknown) =>

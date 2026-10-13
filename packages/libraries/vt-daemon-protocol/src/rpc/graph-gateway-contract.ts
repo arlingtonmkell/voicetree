@@ -65,6 +65,7 @@ export const GRAPH_GATEWAY_METHODS = {
     undo: 'graph.undo',
     redo: 'graph.redo',
     setWriteFolderPath: 'graph.setWriteFolderPath',
+    setFolderState: 'graph.setFolderState',
     // Views
     listViews: 'graph.listViews',
     activateView: 'graph.activateView',
@@ -215,6 +216,20 @@ export namespace GraphSetWriteFolderPath {
         readonly path: string
     }
     export type Response = ProjectState
+}
+
+/**
+ * Collapse, expand or hide a folder in VTD's graphd session. Returns the
+ * re-projected graph so the caller can render the new state without a second
+ * round-trip.
+ */
+export namespace GraphSetFolderState {
+    export interface Request {
+        /** Folder node id; a trailing slash (the cy folder-node form) is accepted. */
+        readonly folderId: string
+        readonly state: 'expanded' | 'collapsed' | 'hidden'
+    }
+    export type Response = ProjectedGraph
 }
 
 // ---------------------------------------------------------------------------
