@@ -118,6 +118,15 @@ export function createWindowChrome(
     // Menu cleanup destroys floating slider when editor closes
     let menuCleanup: (() => void) | undefined;
 
+    // An open editor covers its node, so the node can no longer be grabbed on the
+    // canvas. This strip is the node's drag handle while the editor is open.
+    if (isEditor) {
+        const moveGrip: HTMLDivElement = document.createElement('div');
+        moveGrip.className = 'cy-floating-window-move-grip';
+        moveGrip.title = 'Drag to move this node';
+        appendChromeChild(moveGrip);
+    }
+
     if (isEditor && hasAgents) {
         const nodeId: string = 'contentLinkedToNodeId' in fw ? fw.contentLinkedToNodeId : '';
         const isContextNode: boolean = nodeId.includes('.context_node.');

@@ -153,6 +153,32 @@
   cursor: grabbing;
 }
 
+/* Move grip: full-width strip at the top of an open editor. The editor covers
+ * its node, so this is where the node is dragged from while it is open. */
+.cy-floating-window-move-grip {
+  flex: 0 0 14px;
+  cursor: grab;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  background:
+    radial-gradient(circle, var(--muted-foreground) 1px, transparent 1.5px) center / 6px 6px repeat-x;
+  background-size: 6px 6px;
+  background-position: center;
+  -webkit-mask-image: linear-gradient(to right, transparent 42%, #000 42%, #000 58%, transparent 58%);
+  mask-image: linear-gradient(to right, transparent 42%, #000 42%, #000 58%, transparent 58%);
+  opacity: 0.6;
+  z-index: 2; /* Above resize zones, like the menu bar */
+}
+
+.cy-floating-window-move-grip:hover {
+  opacity: 1;
+}
+
+.cy-floating-window.dragging,
+.cy-floating-window.dragging .cy-floating-window-move-grip {
+  cursor: grabbing;
+}
+
 /* Vertical submenu dropdown from horizontal menu
  * Uses CSS variables for dark mode support */
 .horizontal-menu-submenu {

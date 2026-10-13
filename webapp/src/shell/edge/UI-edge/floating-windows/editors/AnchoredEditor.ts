@@ -13,6 +13,7 @@ import {setPendingEditorFocusPan} from '@/shell/edge/UI-edge/state/stores/Pendin
 import {updateWindowFromZoom} from '@/shell/edge/UI-edge/floating-windows/chrome/update-window-from-zoom';
 import {updateShadowNodeDimensions} from '@/shell/edge/UI-edge/floating-windows/chrome/setup-resize-observer';
 import {cleanupRegistry} from '@/shell/edge/UI-edge/floating-windows/anchoring/cytoscape-floating-windows';
+import {attachDragHandlers} from '@/shell/edge/UI-edge/floating-windows/anchoring/anchor-to-node';
 import {markNodeDirty} from '@/shell/UI/cytoscape-graph-ui/graphviz/layout/auto/autoLayout';
 import {cySmartCenter} from '@/utils/responsivePadding';
 import {closeEditor, createFloatingEditor} from './FloatingEditorCRUD';
@@ -154,11 +155,15 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         resizeObserver.observe(windowElement);
     }
 
+    // The editor sits on top of its node, so the node is dragged through the
+    // editor's chrome (move grip / menu bar) while it is open.
+    const {handleMouseMove, handleMouseUp} = attachDragHandlers(cy, windowElement, nodeId);
+
     // Register cleanup in the shared registry so disposeFloatingWindow handles teardown
     const originalMenuCleanup: (() => void) | undefined = editor.ui?.menuCleanup;
     cleanupRegistry.set(windowElement, {
-        dragMouseMove: (): void => {},
-        dragMouseUp: (): void => {},
+        dragMouseMove: handleMouseMove,
+        dragMouseUp: handleMouseUp,
         resizeObserver,
         menuCleanup: (): void => {
             // Restore Cy node to visible circle (no-op for folder compound nodes).

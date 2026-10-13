@@ -26,6 +26,7 @@ import type {SpatialIndex} from "@vt/graph-model/spatial";
 import {extractFromSpatialIndex} from "@vt/graph-model/spatial";
 import { getLayout } from '@vt/graph-state/state/layoutStore';
 import { resolveVisibleAnchorNodeId } from "@/shell/edge/UI-edge/floating-windows/anchoring/resolve-visible-anchor-node-id";
+import type {} from '@/shell/hostApi';
 
 /**
  * Anchor a floating window to a parent node
@@ -241,13 +242,14 @@ function updateWindowPosition(shadowNode: cytoscape.NodeSingular, domElement: HT
  * to preserve text selection in editor content
  * Returns the document-level handlers so they can be removed on dispose
  */
-function attachDragHandlers(
+export function attachDragHandlers(
     cy: cytoscape.Core,
     windowElement: HTMLElement,
-    shadowNodeId: ShadowNodeId
+    shadowNodeId: ShadowNodeId | NodeIdAndFilePath
 ): { handleMouseMove: (e: MouseEvent) => void; handleMouseUp: () => void } {
     let isDragging: boolean = false;
-    let dragOffset: { x: number; y: number } = { x: 0, y: 0 };
+    let dragStart: { pointer: { x: number; y: number }; node: { x: number; y: number } } =
+        { pointer: { x: 0, y: 0 }, node: { x: 0, y: 0 } };
 
     const handleMouseDown: (e: MouseEvent) => void = (e: MouseEvent) => {
         // Only allow dragging from the menu bar areas, not the content area
@@ -260,26 +262,22 @@ function attachDragHandlers(
         // Check if the click originated from a draggable area:
         // - .cy-floating-window-horizontal-menu (editor menu bar)
         // - .terminal-title-bar (terminal title bar)
-        const draggableArea: Element | null = target.closest('.cy-floating-window-horizontal-menu, .terminal-title-bar');
+        // - .cy-floating-window-move-grip (strip at the top of an open editor)
+        const draggableArea: Element | null = target.closest('.cy-floating-window-horizontal-menu, .terminal-title-bar, .cy-floating-window-move-grip');
         if (!draggableArea) return;
+
+        const anchorNode: cytoscape.CollectionReturnValue = cy.getElementById(shadowNodeId);
+        if (anchorNode.length === 0) return;
 
         isDragging = true;
         windowElement.classList.add('dragging');
 
-        const pan: { x: number; y: number } = getLayout().pan ?? { x: 0, y: 0 };
-
-        // currentLeft/Top are already in screen coordinates (graph * zoom)
-        // set by updateWindowPosition via graphToScreenPosition
-        const currentLeft: number = parseFloat(windowElement.style.left) || 0;
-        const currentTop: number = parseFloat(windowElement.style.top) || 0;
-
-        // Viewport position = screen position + pan (overlay is translated by pan)
-        const viewportX: number = currentLeft + pan.x;
-        const viewportY: number = currentTop + pan.y;
-
-        dragOffset = {
-            x: e.clientX - viewportX,
-            y: e.clientY - viewportY
+        // Drag by pointer delta from where the anchor node started. This needs no
+        // assumption about where the overlay sits in the viewport (it is offset by
+        // open sidebars) or how the window element itself is positioned.
+        dragStart = {
+            pointer: { x: e.clientX, y: e.clientY },
+            node: { ...anchorNode.position() },
         };
 
         e.preventDefault();
@@ -288,25 +286,20 @@ function attachDragHandlers(
     const handleMouseMove: (e: MouseEvent) => void = (e: MouseEvent) => {
         if (!isDragging) return;
 
-        const pan: { x: number; y: number } = getLayout().pan ?? { x: 0, y: 0 };
         const zoom: number = getLayout().zoom ?? 1;
-
-        const viewportX: number = e.clientX - dragOffset.x;
-        const viewportY: number = e.clientY - dragOffset.y;
-
-        const graphX: number = (viewportX - pan.x) / zoom;
-        const graphY: number = (viewportY - pan.y) / zoom;
+        const graphX: number = dragStart.node.x + (e.clientX - dragStart.pointer.x) / zoom;
+        const graphY: number = dragStart.node.y + (e.clientY - dragStart.pointer.y) / zoom;
 
         // Use screen coordinates (graph * zoom) to match updateWindowPosition
         const screenPos: { readonly x: number; readonly y: number } = graphToScreenPosition({ x: graphX, y: graphY }, zoom);
         windowElement.style.left = `${screenPos.x}px`;
         windowElement.style.top = `${screenPos.y}px`;
 
-        // Update shadow node position (in graph coordinates)
+        // Update anchor node position (in graph coordinates)
         // [L2-seam-residual] cy-only: shadow-node drag update
-        const shadowNode: cytoscape.CollectionReturnValue = cy.getElementById(shadowNodeId);
-        if (shadowNode.length > 0) {
-            shadowNode.position({ x: graphX, y: graphY });
+        const anchorNode: cytoscape.CollectionReturnValue = cy.getElementById(shadowNodeId);
+        if (anchorNode.length > 0) {
+            anchorNode.position({ x: graphX, y: graphY });
         }
     };
 
@@ -314,6 +307,9 @@ function attachDragHandlers(
         if (isDragging) {
             isDragging = false;
             windowElement.classList.remove('dragging');
+            // A window drag moves the node without Cytoscape's grab/free cycle, so
+            // persist positions here as the canvas does on 'free'.
+            void window.hostAPI?.main.saveNodePositions(cy.nodes().jsons() as cytoscape.NodeDefinition[]);
         }
     };
 
