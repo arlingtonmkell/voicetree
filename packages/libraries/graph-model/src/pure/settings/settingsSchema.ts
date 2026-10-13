@@ -123,6 +123,8 @@ export function createSettingsSchema(runtime: SettingsRuntime = {}): SettingsSch
     autoNotifyUnseenNodes:     { default: false, section: 'general', label: 'Auto-notify Unseen Nodes' },
     notifyOnAgentCompletion:   { default: true,  section: 'general', label: 'Notify on Agent Completion' },
     autoStartVoiceRecording:   { default: false, section: 'general', label: 'Start Voice Recording on Open' },
+    // Edited in settings.json; a path-fragment → agent-name map has no form field yet.
+    agentByFolder:             { default: {}, hidden: true },
     zoomSensitivity:           { default: 1.0,   section: 'general', label: 'Zoom Sensitivity', number: { min: 0.1, max: 5.0, step: 0.1, slider: true } },
     terminalSpawnPathRelativeToWatchedDirectory: { default: '/', section: 'general', label: 'Terminal Spawn Path' },
     terminalTmuxMouseMode:     { default: false, section: 'general', label: 'Terminal tmux Mouse Mode' },

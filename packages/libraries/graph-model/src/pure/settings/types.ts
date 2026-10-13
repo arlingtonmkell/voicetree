@@ -281,6 +281,13 @@ export interface VTSettings {
     readonly defaultAgent?: string;
     /** Notify via OS notification when an agent completes or errors (only when app is unfocused) */
     readonly notifyOnAgentCompletion?: boolean;
+    /**
+     * Folder rules for which agent runs where: path fragment → agent name (matched
+     * against agents[] like defaultAgent). Work started on a node whose id contains
+     * the fragment uses that agent instead of the default, e.g.
+     * `{"/job/projects/": "Cloud"}`.
+     */
+    readonly agentByFolder?: Readonly<Record<string, string>>;
     /** Start voice recording as soon as the app opens, instead of waiting for the mic button. */
     readonly autoStartVoiceRecording?: boolean;
     /** Show FPS counter overlay on the Cytoscape WebGL renderer (top-left). Requires app restart. */

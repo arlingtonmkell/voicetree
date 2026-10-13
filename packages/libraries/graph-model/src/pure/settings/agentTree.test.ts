@@ -4,6 +4,7 @@ import {
     type ResolvedAgent,
     flattenAgentTree,
     resolveDefaultAgent,
+    resolveFolderAgent,
     mapAgentTreeByCommand,
 } from './agentTree';
 
@@ -116,6 +117,29 @@ describe('flattenAgentTree — robustness invariants (must hold for any tree)', 
             {name: 'Gemini', path: ['Gemini'], label: 'Gemini', command: 'gemini -i "$AGENT_PROMPT"', env: {}},
             {name: 'Codex', path: ['Codex'], label: 'Codex', command: 'codex --yolo "$AGENT_PROMPT"', env: {}},
         ]);
+    });
+});
+
+describe('resolveFolderAgent', () => {
+    const RULES: Readonly<Record<string, string>> = {'/job/projects/': 'Codex / Remote / XHigh'};
+
+    it('assigns the rule\'s agent to a node inside the folder', () => {
+        expect(resolveFolderAgent(CODEX_TREE, RULES, ['/ws/tree/job/projects/a.md'])?.command).toBe(REMOTE_BASE);
+    });
+
+    it('applies when any of several nodes is inside the folder', () => {
+        const agent = resolveFolderAgent(CODEX_TREE, RULES, ['/ws/tree/school/x.md', '/ws/tree/job/projects/a.md']);
+        expect(agent?.label).toBe('Codex / Remote / XHigh');
+    });
+
+    it('matches an agent by its leaf name as well as its full label', () => {
+        expect(resolveFolderAgent(CODEX_TREE, {'/job/projects/': 'Claude'}, ['/ws/tree/job/projects/a.md'])?.name).toBe('Claude');
+    });
+
+    it('assigns nothing outside the folder, with no rules, or for an unknown agent', () => {
+        expect(resolveFolderAgent(CODEX_TREE, RULES, ['/ws/tree/job/applications/a.md'])).toBeUndefined();
+        expect(resolveFolderAgent(CODEX_TREE, undefined, ['/ws/tree/job/projects/a.md'])).toBeUndefined();
+        expect(resolveFolderAgent(CODEX_TREE, {'/job/projects/': 'Gone'}, ['/ws/tree/job/projects/a.md'])).toBeUndefined();
     });
 });
 

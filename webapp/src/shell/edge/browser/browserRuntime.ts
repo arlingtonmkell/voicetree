@@ -15,6 +15,7 @@ import type {mainAPI} from '@/shell/edge/main/runtime/api'
 import type {GraphDelta} from '@vt/graph-model/graph'
 import type {ConnectionState, EventFrame, GapFrame, TopicName} from '@vt/vt-daemon/transport/eventTypes'
 import type {VTSettings} from '@vt/graph-model/settings'
+import {resolveFolderAgent, type ResolvedAgent} from '@vt/graph-model/settings'
 import type {BrowserDaemonConfig} from './browserConfig'
 import {callVtdRpc, vtdGetSettings, vtdSaveSettings, vtdSubscribeEvents} from './vtd-clients/vtdRpc'
 import {rehydrateBrowserTerminals, subscribeBrowserTerminalRegistry} from './browserTerminalRegistry'
@@ -346,10 +347,17 @@ export function buildBrowserRuntime(cfg: BrowserDaemonConfig, sessionId: string)
                     return ps.writeFolderPath ? O.some(ps.writeFolderPath) : O.none
                 },
                 applyTaskNodeDelta: (delta) => vtdApplyDelta(vtdUrl, vtdToken, delta),
-                spawnAgentTerminal: (req) =>
-                    callVtdRpc<SpawnAgentTerminalResult>(
-                        vtdUrl, vtdToken, 'spawnTerminalWithContextNode', req as unknown as Record<string, unknown>,
-                    ),
+                // A folder rule (settings.agentByFolder) on any of the selected nodes
+                // picks the agent; otherwise VTD spawns its default.
+                spawnAgentTerminal: async (req) => {
+                    const settings: VTSettings = await vtdGetSettings(vtdUrl, vtdToken)
+                    const folderAgent: ResolvedAgent | undefined =
+                        resolveFolderAgent(settings.agents ?? [], settings.agentByFolder, req.selectedNodeIds)
+                    return callVtdRpc<SpawnAgentTerminalResult>(vtdUrl, vtdToken, 'spawnTerminalWithContextNode', {
+                        ...req,
+                        ...(folderAgent ? {agentCommand: folderAgent.command} : {}),
+                    })
+                },
             }),
         syncRendererSessionStateWithDaemon: () => Promise.resolve(),
 

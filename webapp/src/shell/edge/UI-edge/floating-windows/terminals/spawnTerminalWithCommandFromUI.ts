@@ -1,7 +1,7 @@
 /** Terminal Flow - V2: Uses types.ts with flat TerminalData type. IDs derived, ui populated after DOM creation. */
 import type { NodeIdAndFilePath, GraphNode } from "@vt/graph-model/graph";
 import type { VTSettings, AgentConfig } from "@vt/graph-model/settings";
-import { resolveDefaultAgent, mapAgentTreeByCommand, type ResolvedAgent } from "@vt/graph-model/settings";
+import { resolveDefaultAgent, resolveFolderAgent, mapAgentTreeByCommand, type ResolvedAgent } from "@vt/graph-model/settings";
 import { showAgentCommandEditor } from "@/shell/edge/UI-edge/graph/popups/agentCommandEditorPopup";
 import type { Core } from "cytoscape";
 import '@/shell/hostApi.d.ts';
@@ -150,9 +150,12 @@ export async function spawnTerminalWithNewContextNode(
         command = agentCommand;
         resolvedEnv = {...envOverrides};
     } else {
-        const defaultAgent: ResolvedAgent | undefined = resolveDefaultAgent(agents, settings.defaultAgent);
-        command = defaultAgent?.command ?? '';
-        resolvedEnv = {...defaultAgent?.env, ...envOverrides};
+        // A folder rule (settings.agentByFolder) outranks the default agent.
+        const agent: ResolvedAgent | undefined =
+            resolveFolderAgent(agents, settings.agentByFolder, [parentNodeId])
+            ?? resolveDefaultAgent(agents, settings.defaultAgent);
+        command = agent?.command ?? '';
+        resolvedEnv = {...agent?.env, ...envOverrides};
     }
     if (!command) {
         console.error('[spawnTerminalWithNewContextNode] No agent command available');
