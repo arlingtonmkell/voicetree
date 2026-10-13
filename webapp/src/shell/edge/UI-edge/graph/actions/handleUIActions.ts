@@ -18,6 +18,7 @@ import {deleteNodeSimple} from "@vt/graph-model/graph";
 import {applyGraphDeltaToGraph} from "@vt/graph-model/graph";
 import type {Core} from 'cytoscape';
 import {
+    closeEditor,
     updateFloatingEditors,
 } from "@/shell/edge/UI-edge/floating-windows/editors/FloatingEditorCRUD";
 import {flushEditorForNode} from "@/shell/edge/UI-edge/floating-windows/editors/flushEditorForNode";
@@ -206,6 +207,13 @@ export async function deleteNodesFromUI(
     }
 
     const finalDelta: GraphDelta = deduplicateDelta(allDeltas)
+
+    // Close each deleted node's editor first: an editor left open over a node
+    // that no longer exists makes the delete look like it did nothing.
+    for (const nodeId of nodeIdsToDelete) {
+        const openEditor = getEditorByNodeId(nodeId)
+        if (O.isSome(openEditor)) closeEditor(cy, openEditor.value)
+    }
 
     for (const nodeId of nodeIdsToDelete) {
         cy.remove(cy.getElementById(nodeId))

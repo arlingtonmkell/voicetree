@@ -35,6 +35,20 @@ import type { WorkflowTreeNode } from '@/shell/edge/main/workflows/workflowHandl
 import type { SliderConfig, HorizontalMenuItem, NodeMenuItemsInput } from './horizontalMenuTypes';
 import { squareToHops } from './DistanceSlider';
 import { getShortcutPlatform } from '@/shell/UI/platform/shortcutPlatform';
+import { showBriefNotice } from '@/shell/UI/views/components/overlays/briefNotice';
+
+/**
+ * Copy text to the clipboard and say so — a silent copy looks like a dead button.
+ */
+function copyToClipboardWithNotice(text: string, copiedMessage: string): void {
+    navigator.clipboard.writeText(text).then(
+        () => showBriefNotice(copiedMessage),
+        (error: unknown) => {
+            console.error('[getNodeMenuItems] Clipboard write failed:', error);
+            showBriefNotice('Could not copy: the browser blocked clipboard access');
+        },
+    );
+}
 
 /**
  * Create slider config for run buttons (non-context nodes only).
@@ -146,7 +160,7 @@ export function getNodeMenuItems(input: NodeMenuItemsInput): HorizontalMenuItem[
     });
     menuItems.push({
         icon: Clipboard, label: 'Copy Path',
-        action: () => { void navigator.clipboard.writeText(getFilePathForNode(nodeId)); },
+        action: () => copyToClipboardWithNotice(getFilePathForNode(nodeId), 'Copied the node\'s file path'),
     });
     menuItems.push({
         icon: Plus, label: 'Add Child', hotkey: formatShortcut('N', shortcutPlatform),
@@ -342,7 +356,7 @@ export function getNodeMenuItems(input: NodeMenuItemsInput): HorizontalMenuItem[
             label: 'Copy Content',
             action: async () => {
                 const graphNode: GraphNode = await getNodeFromMainToUI(nodeId);
-                void navigator.clipboard.writeText(graphNode.contentWithoutYamlOrLinks);
+                copyToClipboardWithNotice(graphNode.contentWithoutYamlOrLinks, 'Copied the node\'s content');
             },
         },
     ];
