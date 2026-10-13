@@ -192,12 +192,15 @@ export function setupBasicCytoscapeEventListeners(
 
   cy.on('pan zoom', checkVisibility);
 
-  // Opening a project must never land on empty canvas: once the first nodes have
-  // had time to be laid out, fit the graph if none of them ended up in view.
+  // Opening a project should show the whole graph: once the first nodes have had
+  // time to be laid out, fit it if the viewport is still untouched (nobody panned,
+  // zoomed or restored a view) or none of the nodes ended up in view.
   const FIRST_NODES_SETTLE_MS: number = 1500;
   cy.one('add', 'node', () => {
     setTimeout(() => {
-      if (cy.destroyed() || areNodesVisibleInViewport(cy)) return;
+      if (cy.destroyed()) return;
+      const viewportUntouched: boolean = cy.zoom() === 1 && cy.pan().x === 0 && cy.pan().y === 0;
+      if (!viewportUntouched && areNodesVisibleInViewport(cy)) return;
       cyFitIntoVisibleViewport(cy, undefined, getResponsivePadding(cy));
       hideNoVisibleNodesToast();
     }, FIRST_NODES_SETTLE_MS);
