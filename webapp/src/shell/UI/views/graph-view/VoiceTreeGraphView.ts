@@ -75,6 +75,8 @@ import {createSettingsEditor} from '@/shell/edge/UI-edge/settings/createSettings
 import {mountLayoutProjection} from '@/shell/edge/UI-edge/graph/layout/layoutProjection';
 import {getLayoutStoreSingleton} from '@vt/graph-state/state/layoutStore';
 import {updateSpeedDialDarkMode} from '@/shell/UI/views/ui-controls/SpeedDialMenu';
+import {showQuickStartGuideOnFirstOpen, toggleQuickStartGuide} from '@/shell/UI/views/components/overlays/quickStartGuide';
+import {hostCapabilities} from '@/shell/runtimeCapabilities';
 import {createRecentNodeTabsBar} from '@/shell/UI/views/ui-controls/RecentNodeTabsBar';
 import {createTerminalTreeSidebar} from '@/shell/UI/views/treeStyleTerminalTabs/TerminalTreeSidebar';
 import {createFolderTreeSidebar} from '@/shell/UI/views/folderTree/FolderTreeSidebar';
@@ -193,11 +195,15 @@ const renderGraphView = ({
                 if (cy) void createSettingsEditor(cy);
             },
             onAbout: () => window.open('https://voicetree.io', '_blank'),
-            onStats: () => window.dispatchEvent(new Event('toggle-stats-panel')),
+            onStats: hostCapabilities().agentMetrics
+                ? () => window.dispatchEvent(new Event('toggle-stats-panel'))
+                : undefined,
             onFeedback: () => void collectFeedback(),
-            onFolderTree: () => toggleFolderTreeSidebar()
+            onFolderTree: () => toggleFolderTreeSidebar(),
+            onHelp: () => toggleQuickStartGuide()
         }
     });
+    showQuickStartGuideOnFirstOpen();
 
     container.style.opacity = '0.3';
     container.style.transition = 'opacity 0.3s ease-in-out';

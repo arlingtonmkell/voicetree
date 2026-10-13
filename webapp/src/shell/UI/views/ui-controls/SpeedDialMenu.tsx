@@ -2,7 +2,8 @@
 /**
  * SpeedDialMenu (React) - Top-right icon toolbar
  *
- * 5 icon buttons: Dark mode, Tidy layout, Settings, Stats, Feedback.
+ * Icon buttons: Dark mode, Tidy layout, Settings, Stats, File tree, Feedback, Help.
+ * A button whose callback is not supplied is not rendered.
  * Mounted/unmounted via createSpeedDialMenu / disposeSpeedDialMenu.
  */
 
@@ -23,9 +24,10 @@ export interface SpeedDialCallbacks {
   onStats?: () => void;
   onFeedback?: () => void;
   onFolderTree?: () => void;
+  onHelp?: () => void;
 }
 
-type IconName = 'sun' | 'moon' | 'layout' | 'settings' | 'bar-chart' | 'message-square' | 'folder';
+type IconName = 'sun' | 'moon' | 'layout' | 'settings' | 'bar-chart' | 'message-square' | 'folder' | 'help';
 
 // =============================================================================
 // SVG Icon Paths
@@ -50,6 +52,11 @@ const ICON_PATHS: Record<IconName, string[]> = {
   'bar-chart': ['M12 20V10', 'M18 20V4', 'M6 20v-4'],
   'message-square': ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
   folder: ['M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'],
+  help: [
+    'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
+    'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3',
+    'M12 17h.01',
+  ],
 };
 
 // =============================================================================
@@ -85,7 +92,8 @@ interface ToolbarItem {
   id: string;
   label: string;
   iconName: IconName;
-  onClick: () => void;
+  /** Absent when the host cannot perform the action — the button is then not rendered. */
+  onClick: (() => void) | undefined;
 }
 
 function SpeedDialMenuInternal({ callbacks, initialDarkMode }: { readonly callbacks: SpeedDialCallbacks; readonly initialDarkMode: boolean }): JSX.Element {
@@ -105,44 +113,50 @@ function SpeedDialMenuInternal({ callbacks, initialDarkMode }: { readonly callba
       id: 'cola-layout',
       label: 'Tidy layout',
       iconName: 'layout',
-      onClick: callbacks.onColaLayout ?? ((): void => { /* no-op */ }),
+      onClick: callbacks.onColaLayout,
     },
     {
       id: 'settings',
       label: 'Settings',
       iconName: 'settings',
-      onClick: callbacks.onSettings ?? ((): void => { /* no-op */ }),
+      onClick: callbacks.onSettings,
     },
     {
       id: 'stats',
       label: 'Stats',
       iconName: 'bar-chart',
-      onClick: callbacks.onStats ?? ((): void => { /* no-op */ }),
+      onClick: callbacks.onStats,
     },
     {
       id: 'folder-tree',
       label: 'File tree',
       iconName: 'folder',
-      onClick: callbacks.onFolderTree ?? ((): void => { /* no-op */ }),
+      onClick: callbacks.onFolderTree,
     },
     {
       id: 'feedback',
       label: 'Feedback',
       iconName: 'message-square',
-      onClick: callbacks.onFeedback ?? ((): void => { /* no-op */ }),
+      onClick: callbacks.onFeedback,
+    },
+    {
+      id: 'help',
+      label: 'How to use',
+      iconName: 'help',
+      onClick: callbacks.onHelp,
     },
   ];
 
   return (
     <div className="speed-dial-container">
-      {items.map((item: ToolbarItem) => (
+      {items.filter((item: ToolbarItem) => item.onClick !== undefined).map((item: ToolbarItem) => (
         <div key={item.id} className="speed-dial-wrapper">
           <button
             className="speed-dial-item"
             aria-label={item.label}
             onClick={(e: React.MouseEvent): void => {
               e.stopPropagation();
-              item.onClick();
+              item.onClick?.();
             }}
           >
             <SpeedDialIcon name={item.iconName} />

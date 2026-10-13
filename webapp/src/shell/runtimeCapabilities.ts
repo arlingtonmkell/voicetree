@@ -58,6 +58,12 @@ export interface RuntimeCapabilities {
      * editor/terminal and spoken agent commands.
      */
     readonly textToTree: boolean
+    /**
+     * Agent statistics panel (getMetrics). Native only — VTD registers no
+     * `metrics.getMetrics` RPC, so in browser mode the panel could only show
+     * "Failed to fetch agent metrics"; the toolbar hides the Stats button.
+     */
+    readonly agentMetrics: boolean
 }
 
 export const ELECTRON_CAPABILITIES: RuntimeCapabilities = {
@@ -70,6 +76,7 @@ export const ELECTRON_CAPABILITIES: RuntimeCapabilities = {
     nativeMicrophoneSettings: true,
     askMode: true,
     textToTree: true,
+    agentMetrics: true,
 }
 
 export const BROWSER_CAPABILITIES: RuntimeCapabilities = {
@@ -88,6 +95,7 @@ export const BROWSER_CAPABILITIES: RuntimeCapabilities = {
     nativeMicrophoneSettings: false,
     askMode: false,
     textToTree: false,
+    agentMetrics: false,
 }
 
 /**

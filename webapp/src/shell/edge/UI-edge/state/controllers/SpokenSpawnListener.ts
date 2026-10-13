@@ -9,16 +9,18 @@ import {getFinalTokens, subscribe} from '@/shell/edge/UI-edge/state/stores/Trans
 import {getCyInstance} from '@/shell/edge/UI-edge/state/controllers/cytoscape-state'
 import {flushEditorForNode} from '@/shell/edge/UI-edge/floating-windows/editors/flushEditorForNode'
 import {parseVoiceAgentCommand, takeCompletedUtterances, type CompletedUtterances} from '@/shell/UI/views/hooks/voiceAgentCommand'
+import {showBriefNotice} from '@/shell/UI/views/components/overlays/briefNotice'
 import type {} from '@/shell/hostApi'
 
 async function runAgentOnSelection(taskDescription: string): Promise<void> {
     const selectedNodeIds: NodeIdAndFilePath[] =
         getCyInstance().$(':selected').nodes().map((node): NodeIdAndFilePath => node.id() as NodeIdAndFilePath)
     if (selectedNodeIds.length === 0) {
-        console.warn('[VoiceAgentCommand] No node selected — ignoring spoken agent command:', taskDescription)
+        showBriefNotice('Heard the agent command, but no node is selected. Click a node, then say it again.')
         return
     }
     await Promise.all(selectedNodeIds.map((nodeId: NodeIdAndFilePath) => flushEditorForNode(nodeId)))
+    showBriefNotice(`Starting an agent to ${taskDescription}`)
     await window.hostAPI?.main.runAgentOnSelectedNodes({selectedNodeIds, taskDescription})
 }
 
@@ -37,6 +39,7 @@ export function listenForVoiceAgentCommands(): () => void {
             const task: O.Option<string> = parseVoiceAgentCommand(utterance)
             if (O.isNone(task)) continue
             runAgentOnSelection(task.value).catch((error: unknown) => {
+                showBriefNotice('Could not start the agent. See the console for details.')
                 console.error('[VoiceAgentCommand] Failed to run agent:', error)
             })
         }

@@ -191,4 +191,15 @@ export function setupBasicCytoscapeEventListeners(
   };
 
   cy.on('pan zoom', checkVisibility);
+
+  // Opening a project must never land on empty canvas: once the first nodes have
+  // had time to be laid out, fit the graph if none of them ended up in view.
+  const FIRST_NODES_SETTLE_MS: number = 1500;
+  cy.one('add', 'node', () => {
+    setTimeout(() => {
+      if (cy.destroyed() || areNodesVisibleInViewport(cy)) return;
+      cyFitIntoVisibleViewport(cy, undefined, getResponsivePadding(cy));
+      hideNoVisibleNodesToast();
+    }, FIRST_NODES_SETTLE_MS);
+  });
 }
