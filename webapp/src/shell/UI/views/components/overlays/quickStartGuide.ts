@@ -16,7 +16,7 @@ const SECTIONS: readonly { readonly title: string; readonly rows: readonly (read
       ['New node', 'Ctrl+N'],
       ['Open / edit a node', 'Hover or click it'],
       ['Move an open box off its node', 'Drag the strip along the box\'s top edge'],
-      ['Move an open node', 'Drag the coloured dot at the strip\'s left end'],
+      ['Move an open node, leaving its box', 'Drag the coloured dot at the strip\'s left end'],
       ['Put a box back on its node', 'Drag it back onto the node'],
       ['Select several', 'Shift+drag a box around them'],
       ['Delete selected', 'Ctrl+Backspace'],

@@ -119,15 +119,15 @@ export function createWindowChrome(
     let menuCleanup: (() => void) | undefined;
 
     // Drag strip along the top of an editor. Dragging the strip moves the box away
-    // from its node; the round handle at its left end moves the node itself (an
-    // open editor covers its node, so the node cannot be grabbed on the canvas).
+    // from its node; the round handle at its left end pulls the node out from under
+    // the box (an open editor covers its node, so it cannot be grabbed on the canvas).
     if (isEditor) {
         const moveGrip: HTMLDivElement = document.createElement('div');
         moveGrip.className = 'cy-floating-window-move-grip';
         moveGrip.title = 'Drag to move this box away from its node';
         const nodeHandle: HTMLDivElement = document.createElement('div');
         nodeHandle.className = 'cy-floating-window-node-handle';
-        nodeHandle.title = 'Drag to move the node (the box follows)';
+        nodeHandle.title = 'Drag to pull the node out from under this box';
         moveGrip.appendChild(nodeHandle);
         appendChromeChild(moveGrip);
     }

@@ -162,14 +162,30 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
     if (!isFolderAnchor) windowElement.classList.add('covers-its-node');
 
     // The box starts on top of its node (the node takes the box's size and hides).
-    // Dragging the box away detaches it: the node becomes a normal, draggable circle
-    // again and the box keeps its offset from it, joined by a tether.
+    // Dragging either one away detaches them: the node becomes a normal, draggable
+    // circle again and the box stays where it was put, joined to the node by a
+    // tether. Once detached the two move independently — moving the node (by hand
+    // or by layout) leaves the box in place.
     const isDetached: () => boolean = (): boolean => windowElement.dataset.tethered === 'true';
-    const syncWindowToNode: () => void = (): void => {
+    /** The detached box's own position in graph coordinates; null while it sits on its node. */
+    let boxPosition: cytoscape.Position | null = null;
+    const writeBoxOffset: (offset: BoxOffset) => void = (offset: BoxOffset): void => {
+        windowElement.dataset.graphOffsetX = String(offset.x);
+        windowElement.dataset.graphOffsetY = String(offset.y);
         updateWindowFromZoom(cy, windowElement, getLayout().zoom ?? 1);
     };
-    const setBoxOffset: (offset: BoxOffset) => void = (offset: BoxOffset): void => {
-        const detach: boolean = Math.hypot(offset.x, offset.y) > REATTACH_DISTANCE;
+    const syncWindowToNode: () => void = (): void => {
+        const nodePosition: cytoscape.Position = cyNode.position();
+        writeBoxOffset(boxPosition === null
+            ? {x: 0, y: 0}
+            : {x: boxPosition.x - nodePosition.x, y: boxPosition.y - nodePosition.y});
+    };
+    /**
+     * Put the box at `offset` from its node. With `snap`, an offset within
+     * REATTACH_DISTANCE puts the box back on top of the node.
+     */
+    const setBoxOffset: (offset: BoxOffset, snap: boolean) => void = (offset: BoxOffset, snap: boolean): void => {
+        const detach: boolean = !snap || Math.hypot(offset.x, offset.y) > REATTACH_DISTANCE;
         if (detach && !isDetached()) {
             windowElement.dataset.tethered = 'true';
             applyAnchoredEditorCloseStyle(cyNode);
@@ -179,8 +195,8 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
             applyAnchoredEditorOpenStyle(cyNode);
             updateShadowNodeDimensions(cyNode, windowElement);
         }
-        windowElement.dataset.graphOffsetX = String(detach ? offset.x : 0);
-        windowElement.dataset.graphOffsetY = String(detach ? offset.y : 0);
+        const nodePosition: cytoscape.Position = cyNode.position();
+        boxPosition = detach ? {x: nodePosition.x + offset.x, y: nodePosition.y + offset.y} : null;
         syncWindowToNode();
     };
     cyNode.on('position', syncWindowToNode);
@@ -202,9 +218,11 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         resizeObserver.observe(windowElement);
     }
 
-    // Dragging the box's chrome moves the box alone, relative to its node. The node
-    // handle on the grip moves the node instead, and the box follows it.
+    // Dragging the box's chrome moves the box alone. The node handle on the grip
+    // pulls the node out from under the box instead, leaving the box where it is.
+    // (A folder's box is never detached, so any drag moves the folder with its box.)
     const moveNode: WindowDragBehaviour<cytoscape.Position> = moveNodeDragBehaviour(cy, nodeId);
+    let nodeWasPulledOut: boolean = false;
     const {handleMouseMove, handleMouseUp} = attachWindowDrag<BoxOrNodeDragStart>(windowElement, {
         begin: (pressed: Element) => {
             if (pressed.closest('.cy-floating-window-node-handle') === null && !isFolderAnchor) {
@@ -215,12 +233,22 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         },
         move: (start: BoxOrNodeDragStart, graphDx: number, graphDy: number) => {
             if (start.kind === 'box') {
-                setBoxOffset({x: start.offset.x + graphDx, y: start.offset.y + graphDy});
-            } else {
-                moveNode.move(start.position, graphDx, graphDy);
+                setBoxOffset({x: start.offset.x + graphDx, y: start.offset.y + graphDy}, true);
+                return;
+            }
+            moveNode.move(start.position, graphDx, graphDy);
+            if (!isFolderAnchor) {
+                // The box holds its place: its offset is the node's travel, reversed.
+                setBoxOffset({x: -graphDx, y: -graphDy}, false);
+                nodeWasPulledOut = true;
             }
         },
-        end: () => moveNode.end(),
+        end: () => {
+            // A node barely nudged out from under its box goes back under it.
+            if (nodeWasPulledOut) setBoxOffset(readBoxOffset(windowElement), true);
+            nodeWasPulledOut = false;
+            moveNode.end();
+        },
     });
 
     // Register cleanup in the shared registry so disposeFloatingWindow handles teardown
