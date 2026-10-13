@@ -13,7 +13,8 @@ import {setPendingEditorFocusPan} from '@/shell/edge/UI-edge/state/stores/Pendin
 import {updateWindowFromZoom} from '@/shell/edge/UI-edge/floating-windows/chrome/update-window-from-zoom';
 import {updateShadowNodeDimensions} from '@/shell/edge/UI-edge/floating-windows/chrome/setup-resize-observer';
 import {cleanupRegistry} from '@/shell/edge/UI-edge/floating-windows/anchoring/cytoscape-floating-windows';
-import {attachDragHandlers} from '@/shell/edge/UI-edge/floating-windows/anchoring/anchor-to-node';
+import {attachWindowDrag, moveNodeDragBehaviour, type WindowDragBehaviour} from '@/shell/edge/UI-edge/floating-windows/anchoring/anchor-to-node';
+import {removeEditorTether} from '@/shell/edge/UI-edge/floating-windows/chrome/editor-tether';
 import {markNodeDirty} from '@/shell/UI/cytoscape-graph-ui/graphviz/layout/auto/autoLayout';
 import {cySmartCenter} from '@/utils/responsivePadding';
 import {closeEditor, createFloatingEditor} from './FloatingEditorCRUD';
@@ -119,6 +120,23 @@ function navigateToEditorNeighborhood(cy: Core, nodeId: NodeIdAndFilePath): void
 // Real-Node Anchoring
 // =============================================================================
 
+/** Where an editor box sits relative to its node, in graph units. */
+type BoxOffset = { readonly x: number; readonly y: number };
+
+type BoxOrNodeDragStart =
+    | { readonly kind: 'box'; readonly offset: BoxOffset }
+    | { readonly kind: 'node'; readonly position: cytoscape.Position };
+
+/** A box dropped within this distance of its node snaps back on top of it. */
+const REATTACH_DISTANCE: number = 40;
+
+function readBoxOffset(windowElement: HTMLElement): BoxOffset {
+    return {
+        x: parseFloat(windowElement.dataset.graphOffsetX ?? '0'),
+        y: parseFloat(windowElement.dataset.graphOffsetY ?? '0'),
+    };
+}
+
 /**
  * Anchor an editor to the real Cy node instead of creating a shadow child node.
  * Hides the Cy circle (opacity 0, keeps ellipse shape for edges), syncs DOM size
@@ -139,11 +157,40 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
     // No-op for folder compound nodes (their bbox is the entire children area).
     const cyNode: cytoscape.CollectionReturnValue = cy.getElementById(nodeId);
     applyAnchoredEditorOpenStyle(cyNode);
+    // A folder's "node" is the whole compound area, so its box is not detached from it.
+    const isFolderAnchor: boolean = cyNode.data('isFolderNode') === true;
+    if (!isFolderAnchor) windowElement.classList.add('covers-its-node');
+
+    // The box starts on top of its node (the node takes the box's size and hides).
+    // Dragging the box away detaches it: the node becomes a normal, draggable circle
+    // again and the box keeps its offset from it, joined by a tether.
+    const isDetached: () => boolean = (): boolean => windowElement.dataset.tethered === 'true';
+    const syncWindowToNode: () => void = (): void => {
+        updateWindowFromZoom(cy, windowElement, getLayout().zoom ?? 1);
+    };
+    const setBoxOffset: (offset: BoxOffset) => void = (offset: BoxOffset): void => {
+        const detach: boolean = Math.hypot(offset.x, offset.y) > REATTACH_DISTANCE;
+        if (detach && !isDetached()) {
+            windowElement.dataset.tethered = 'true';
+            applyAnchoredEditorCloseStyle(cyNode);
+        } else if (!detach && isDetached()) {
+            delete windowElement.dataset.tethered;
+            removeEditorTether(windowElement);
+            applyAnchoredEditorOpenStyle(cyNode);
+            updateShadowNodeDimensions(cyNode, windowElement);
+        }
+        windowElement.dataset.graphOffsetX = String(detach ? offset.x : 0);
+        windowElement.dataset.graphOffsetY = String(detach ? offset.y : 0);
+        syncWindowToNode();
+    };
+    cyNode.on('position', syncWindowToNode);
 
     // ResizeObserver: sync DOM size → Cy node dimensions for Cola layout
     let resizeObserver: ResizeObserver | undefined;
     if (cyNode.length > 0 && typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver((): void => {
+            // A detached box no longer stands in for its node, so the node keeps its own size.
+            if (isDetached()) return;
             const oldW: number = cyNode.width();
             const oldH: number = cyNode.height();
             updateShadowNodeDimensions(cyNode, windowElement);
@@ -155,9 +202,26 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         resizeObserver.observe(windowElement);
     }
 
-    // The editor sits on top of its node, so the node is dragged through the
-    // editor's chrome (move grip / menu bar) while it is open.
-    const {handleMouseMove, handleMouseUp} = attachDragHandlers(cy, windowElement, nodeId);
+    // Dragging the box's chrome moves the box alone, relative to its node. The node
+    // handle on the grip moves the node instead, and the box follows it.
+    const moveNode: WindowDragBehaviour<cytoscape.Position> = moveNodeDragBehaviour(cy, nodeId);
+    const {handleMouseMove, handleMouseUp} = attachWindowDrag<BoxOrNodeDragStart>(windowElement, {
+        begin: (pressed: Element) => {
+            if (pressed.closest('.cy-floating-window-node-handle') === null && !isFolderAnchor) {
+                return {kind: 'box', offset: readBoxOffset(windowElement)};
+            }
+            const nodeStart: cytoscape.Position | null = moveNode.begin(pressed);
+            return nodeStart ? {kind: 'node', position: nodeStart} : null;
+        },
+        move: (start: BoxOrNodeDragStart, graphDx: number, graphDy: number) => {
+            if (start.kind === 'box') {
+                setBoxOffset({x: start.offset.x + graphDx, y: start.offset.y + graphDy});
+            } else {
+                moveNode.move(start.position, graphDx, graphDy);
+            }
+        },
+        end: () => moveNode.end(),
+    });
 
     // Register cleanup in the shared registry so disposeFloatingWindow handles teardown
     const originalMenuCleanup: (() => void) | undefined = editor.ui?.menuCleanup;
@@ -166,6 +230,8 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         dragMouseUp: handleMouseUp,
         resizeObserver,
         menuCleanup: (): void => {
+            cyNode.off('position', syncWindowToNode);
+            removeEditorTether(windowElement);
             // Restore Cy node to visible circle (no-op for folder compound nodes).
             const stillExists: boolean = cyNode.length > 0;
             const isFolder: boolean = stillExists && cyNode.data('isFolderNode') === true;

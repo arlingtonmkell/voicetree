@@ -247,70 +247,88 @@ export function attachDragHandlers(
     windowElement: HTMLElement,
     shadowNodeId: ShadowNodeId | NodeIdAndFilePath
 ): { handleMouseMove: (e: MouseEvent) => void; handleMouseUp: () => void } {
-    let isDragging: boolean = false;
-    let dragStart: { pointer: { x: number; y: number }; node: { x: number; y: number } } =
-        { pointer: { x: 0, y: 0 }, node: { x: 0, y: 0 } };
+    return attachWindowDrag(windowElement, moveNodeDragBehaviour(cy, shadowNodeId));
+}
+
+/** Chrome areas a floating window can be dragged from (never its content, so text selection survives). */
+const WINDOW_DRAG_HANDLE_SELECTOR: string =
+    '.cy-floating-window-horizontal-menu, .terminal-title-bar, .cy-floating-window-move-grip';
+
+/**
+ * What a drag on a window's chrome does. `begin` receives the element the
+ * pointer went down on and snapshots whatever the drag starts from (or returns
+ * null to ignore the gesture); `move` receives that snapshot plus the pointer's
+ * travel in graph units.
+ */
+export interface WindowDragBehaviour<Start> {
+    readonly begin: (pressed: Element) => Start | null
+    readonly move: (start: Start, graphDx: number, graphDy: number) => void
+    readonly end: () => void
+}
+
+/** Drag behaviour that moves a cy node (and whatever follows its position). */
+export function moveNodeDragBehaviour(
+    cy: cytoscape.Core,
+    nodeId: ShadowNodeId | NodeIdAndFilePath
+): WindowDragBehaviour<cytoscape.Position> {
+    return {
+        begin: () => {
+            const node: cytoscape.CollectionReturnValue = cy.getElementById(nodeId);
+            return node.length > 0 ? { ...node.position() } : null;
+        },
+        // [L2-seam-residual] cy-only: node drag update
+        move: (start, graphDx, graphDy) => {
+            cy.getElementById(nodeId).position({ x: start.x + graphDx, y: start.y + graphDy });
+        },
+        // A window drag moves the node without Cytoscape's grab/free cycle, so
+        // persist positions here as the canvas does on 'free'.
+        end: () => {
+            void window.hostAPI?.main.saveNodePositions(cy.nodes().jsons() as cytoscape.NodeDefinition[]);
+        },
+    };
+}
+
+/**
+ * Wire a drag gesture on the window's chrome to `behaviour`.
+ *
+ * The drag is measured as pointer travel from where it started, so it needs no
+ * assumption about where the overlay sits in the viewport (it is offset by open
+ * sidebars) or how the window element itself is positioned.
+ */
+export function attachWindowDrag<Start>(
+    windowElement: HTMLElement,
+    behaviour: WindowDragBehaviour<Start>
+): { handleMouseMove: (e: MouseEvent) => void; handleMouseUp: () => void } {
+    let active: { readonly pointer: { readonly x: number; readonly y: number }; readonly start: Start } | null = null;
 
     const handleMouseDown: (e: MouseEvent) => void = (e: MouseEvent) => {
-        // Only allow dragging from the menu bar areas, not the content area
-        // This preserves text selection in the editor content
         const target: HTMLElement = e.target as HTMLElement;
 
         // Don't drag when clicking buttons or children of buttons (e.g. icon/text spans inside inject badge)
         if (target.tagName === 'BUTTON' || target.closest('button') !== null) return;
 
-        // Check if the click originated from a draggable area:
-        // - .cy-floating-window-horizontal-menu (editor menu bar)
-        // - .terminal-title-bar (terminal title bar)
-        // - .cy-floating-window-move-grip (strip at the top of an open editor)
-        const draggableArea: Element | null = target.closest('.cy-floating-window-horizontal-menu, .terminal-title-bar, .cy-floating-window-move-grip');
-        if (!draggableArea) return;
+        const handle: Element | null = target.closest(WINDOW_DRAG_HANDLE_SELECTOR);
+        if (!handle) return;
 
-        const anchorNode: cytoscape.CollectionReturnValue = cy.getElementById(shadowNodeId);
-        if (anchorNode.length === 0) return;
+        const start: Start | null = behaviour.begin(target);
+        if (start === null) return;
 
-        isDragging = true;
+        active = { pointer: { x: e.clientX, y: e.clientY }, start };
         windowElement.classList.add('dragging');
-
-        // Drag by pointer delta from where the anchor node started. This needs no
-        // assumption about where the overlay sits in the viewport (it is offset by
-        // open sidebars) or how the window element itself is positioned.
-        dragStart = {
-            pointer: { x: e.clientX, y: e.clientY },
-            node: { ...anchorNode.position() },
-        };
-
         e.preventDefault();
     };
 
     const handleMouseMove: (e: MouseEvent) => void = (e: MouseEvent) => {
-        if (!isDragging) return;
-
+        if (!active) return;
         const zoom: number = getLayout().zoom ?? 1;
-        const graphX: number = dragStart.node.x + (e.clientX - dragStart.pointer.x) / zoom;
-        const graphY: number = dragStart.node.y + (e.clientY - dragStart.pointer.y) / zoom;
-
-        // Use screen coordinates (graph * zoom) to match updateWindowPosition
-        const screenPos: { readonly x: number; readonly y: number } = graphToScreenPosition({ x: graphX, y: graphY }, zoom);
-        windowElement.style.left = `${screenPos.x}px`;
-        windowElement.style.top = `${screenPos.y}px`;
-
-        // Update anchor node position (in graph coordinates)
-        // [L2-seam-residual] cy-only: shadow-node drag update
-        const anchorNode: cytoscape.CollectionReturnValue = cy.getElementById(shadowNodeId);
-        if (anchorNode.length > 0) {
-            anchorNode.position({ x: graphX, y: graphY });
-        }
+        behaviour.move(active.start, (e.clientX - active.pointer.x) / zoom, (e.clientY - active.pointer.y) / zoom);
     };
 
     const handleMouseUp: () => void = () => {
-        if (isDragging) {
-            isDragging = false;
-            windowElement.classList.remove('dragging');
-            // A window drag moves the node without Cytoscape's grab/free cycle, so
-            // persist positions here as the canvas does on 'free'.
-            void window.hostAPI?.main.saveNodePositions(cy.nodes().jsons() as cytoscape.NodeDefinition[]);
-        }
+        if (!active) return;
+        active = null;
+        windowElement.classList.remove('dragging');
+        behaviour.end();
     };
 
     windowElement.addEventListener('mousedown', handleMouseDown);

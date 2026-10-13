@@ -118,12 +118,17 @@ export function createWindowChrome(
     // Menu cleanup destroys floating slider when editor closes
     let menuCleanup: (() => void) | undefined;
 
-    // An open editor covers its node, so the node can no longer be grabbed on the
-    // canvas. This strip is the node's drag handle while the editor is open.
+    // Drag strip along the top of an editor. Dragging the strip moves the box away
+    // from its node; the round handle at its left end moves the node itself (an
+    // open editor covers its node, so the node cannot be grabbed on the canvas).
     if (isEditor) {
         const moveGrip: HTMLDivElement = document.createElement('div');
         moveGrip.className = 'cy-floating-window-move-grip';
-        moveGrip.title = 'Drag to move this node';
+        moveGrip.title = 'Drag to move this box away from its node';
+        const nodeHandle: HTMLDivElement = document.createElement('div');
+        nodeHandle.className = 'cy-floating-window-node-handle';
+        nodeHandle.title = 'Drag to move the node (the box follows)';
+        moveGrip.appendChild(nodeHandle);
         appendChromeChild(moveGrip);
     }
 

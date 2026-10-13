@@ -7,6 +7,7 @@ import {
     type ScalingStrategy,
     type TransformOrigin,
 } from "@vt/graph-model/floating-windows";
+import { drawEditorTether } from "@/shell/edge/UI-edge/floating-windows/chrome/editor-tether";
 import { isZoomActive } from "@/shell/edge/UI-edge/floating-windows/anchoring/cytoscape-floating-windows";
 
 /**
@@ -126,8 +127,11 @@ export function updateWindowFromZoom(cy: cytoscape.Core, windowElement: HTMLElem
         }
     }
 
-    // Apply optional graph-coordinate Y offset (position already resolved above)
+    // Apply optional graph-coordinate offset from the anchor (position already resolved above).
+    // A non-zero offset means the window has been moved off its node: tether it back.
+    const graphOffsetX: number = parseFloat(windowElement.dataset.graphOffsetX ?? '0');
     const graphOffsetY: number = parseFloat(windowElement.dataset.graphOffsetY ?? '0');
+    const finalGraphX: number | undefined = graphX !== undefined ? graphX + graphOffsetX : graphX;
     const finalGraphY: number | undefined = graphY !== undefined && graphOffsetY !== 0
         ? graphY + graphOffsetY
         : graphY;
@@ -135,13 +139,17 @@ export function updateWindowFromZoom(cy: cytoscape.Core, windowElement: HTMLElem
     // Toggle toolbar visibility based on zoom level
     windowElement.classList.toggle('zoom-below-toolbar-threshold', zoom < 0.5);
 
-    if (graphX !== undefined && finalGraphY !== undefined) {
+    if (finalGraphX !== undefined && finalGraphY !== undefined) {
         const screenPos: { readonly x: number; readonly y: number } = graphToScreenPosition({
-            x: graphX,
+            x: finalGraphX,
             y: finalGraphY
         }, zoom);
         windowElement.style.left = `${screenPos.x}px`;
         windowElement.style.top = `${screenPos.y}px`;
+
+        if (windowElement.dataset.tethered === 'true' && graphX !== undefined && graphY !== undefined) {
+            drawEditorTether(windowElement, graphToScreenPosition({ x: graphX, y: graphY }, zoom), screenPos);
+        }
 
         // Check for custom transform origin (e.g., hover editors use translateX(-50%) for centering)
         const customOrigin: TransformOrigin = windowElement.dataset.transformOrigin === 'top-center' ? 'top-center' : 'center';
