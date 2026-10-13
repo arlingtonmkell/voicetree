@@ -23,6 +23,7 @@ import {
     type GraphApplyDelta,
     type GraphWriteMarkdownFile,
     type GraphWritePositions,
+    type GraphWriteNodeSize,
     type GraphFindFileByName,
     type GraphGetPreviewContainedNodeIds,
     type GraphCreateContextNode,
@@ -101,6 +102,10 @@ export const vtdWriteMarkdownFile =
 export const vtdWritePositions =
     graphCall<[positions: Record<string, Position>], GraphWritePositions.Response>(
         M.writePositions, (positions) => ({positions}))
+
+export const vtdWriteNodeSize =
+    graphCall<[nodeId: string, size: GraphWriteNodeSize.Request['size']], GraphWriteNodeSize.Response>(
+        M.writeNodeSize, (nodeId, size) => ({nodeId, size}))
 
 export const vtdFindFileByName =
     graphCall<[name: string], GraphFindFileByName.Response>(M.findFileByName, (name) => ({name}))

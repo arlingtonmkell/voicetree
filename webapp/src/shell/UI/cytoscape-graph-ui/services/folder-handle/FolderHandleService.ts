@@ -76,6 +76,7 @@ const OVERLAY_CLASS = 'vt-folder-handle-overlay';
 const CHIP_CLASS = 'vt-folder-handle';
 const BUTTON_CHEVRON_CLASS = 'vt-folder-handle__chevron';
 const BUTTON_EYE_CLASS = 'vt-folder-handle__eye';
+const BUTTON_MOVE_CLASS = 'vt-folder-handle__move';
 const STYLE_TAG_ID = 'vt-folder-handle-style';
 
 const CHEVRON_DOWN_SVG =
@@ -90,6 +91,13 @@ const EYE_SVG =
     '<svg viewBox="0 0 22 22" width="14" height="14" aria-hidden="true">' +
     '<path d="M3 11 Q11 4 19 11 Q11 18 3 11 Z" stroke="currentColor" stroke-width="1.5" fill="none"/>' +
     '<circle cx="11" cy="11" r="2.4" fill="currentColor"/>' +
+    '</svg>';
+
+const MOVE_SVG =
+    '<svg viewBox="0 0 22 22" width="14" height="14" aria-hidden="true">' +
+    '<path d="M11 3 V19 M3 11 H19 M11 3 L8.5 5.5 M11 3 L13.5 5.5 M11 19 L8.5 16.5 M11 19 L13.5 16.5 ' +
+    'M3 11 L5.5 8.5 M3 11 L5.5 13.5 M19 11 L16.5 8.5 M19 11 L16.5 13.5" ' +
+    'stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
     '</svg>';
 
 function injectStylesheet(): void {
@@ -117,7 +125,8 @@ function injectStylesheet(): void {
     -webkit-app-region: no-drag;
 }
 .${BUTTON_CHEVRON_CLASS},
-.${BUTTON_EYE_CLASS} {
+.${BUTTON_EYE_CLASS},
+.${BUTTON_MOVE_CLASS} {
     width: ${CHIP_PX}px;
     height: ${CHIP_PX}px;
     display: flex;
@@ -135,10 +144,15 @@ function injectStylesheet(): void {
     transition: background-color 80ms linear, border-color 80ms linear;
 }
 .${BUTTON_CHEVRON_CLASS}:hover,
-.${BUTTON_EYE_CLASS}:hover {
+.${BUTTON_EYE_CLASS}:hover,
+.${BUTTON_MOVE_CLASS}:hover {
     background: rgba(60, 60, 65, 0.95);
     border-color: #aaa;
     color: #fff;
+}
+.${BUTTON_MOVE_CLASS} {
+    cursor: move;
+    margin-left: -1.5px; /* overlap borders so the strip reads as one unit */
 }
 .${BUTTON_CHEVRON_CLASS}:focus,
 .${BUTTON_EYE_CLASS}:focus {
@@ -294,8 +308,22 @@ export function setupFolderHandles(cy: Core): void {
             if (viewHoverFolderId !== null) scheduleClose();
         });
 
+        // Move chip: drag it to move the folder with everything in it. (The folder
+        // body itself pans the canvas, so the box needs its own handle.)
+        const moveBtn: HTMLButtonElement = document.createElement('button');
+        moveBtn.type = 'button';
+        moveBtn.className = BUTTON_MOVE_CLASS;
+        moveBtn.setAttribute('aria-label', 'Move folder');
+        moveBtn.title = 'Drag to move this folder and everything in it';
+        moveBtn.innerHTML = MOVE_SVG;
+        moveBtn.addEventListener('mousedown', (evt: MouseEvent): void => {
+            if (evt.button !== 0) return;
+            resize.beginMove(folderId, evt);
+        });
+
         el.appendChild(chevronBtn);
         el.appendChild(eyeBtn);
+        el.appendChild(moveBtn);
         overlay.appendChild(el);
         chips.set(folderId, {el, chevronBtn, eyeBtn, chevronCollapsed: undefined});
         positionChip(folderId);

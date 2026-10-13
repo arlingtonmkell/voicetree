@@ -41,6 +41,7 @@ import {
     type GraphSetFolderState,
     type GraphSetWriteFolderPath,
     type GraphWriteMarkdownFile,
+    type GraphWriteNodeSize,
     type GraphWritePositions,
 } from '@vt/vt-daemon-protocol'
 import {
@@ -170,6 +171,17 @@ export function buildGraphGatewayRoutes(deps: GraphGatewayDeps): readonly RpcRou
             handler: async (args): Promise<ToolResponse> => {
                 const {positions} = args as unknown as GraphWritePositions.Request
                 return json(await client.writeNodeLayout(positions))
+            },
+        },
+        {
+            name: M.writeNodeSize,
+            inputShape: {
+                nodeId: z.string(),
+                size: z.object({width: z.number().positive(), height: z.number().positive()}),
+            },
+            handler: async (args): Promise<ToolResponse> => {
+                const {nodeId, size} = args as unknown as GraphWriteNodeSize.Request
+                return json(await client.writeNodeLayout({[nodeId]: {w: size.width, h: size.height}}))
             },
         },
         {

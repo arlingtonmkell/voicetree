@@ -35,6 +35,7 @@ import {
     vtdRedo,
     vtdSetWriteFolderPath,
     vtdSetFolderState,
+    vtdWriteNodeSize,
     vtdUndo,
     vtdWriteMarkdownFile,
     vtdWritePositions,
@@ -184,6 +185,9 @@ export function buildBrowserRuntime(cfg: BrowserDaemonConfig, sessionId: string)
         // wants {positions: {nodeId: {x, y}}}. Transform before sending.
         saveNodePositions: (payload: unknown) =>
             vtdWritePositions(vtdUrl, vtdToken, collectNodePositions(payload as NodeDefinition[])),
+        // A resized folder's size, keyed by its directory id, in the same sidecar.
+        saveNodeSize: (folderId: string, size: {readonly width: number; readonly height: number}) =>
+            vtdWriteNodeSize(vtdUrl, vtdToken, folderId, size).then((): void => undefined),
         // The browser has no semantic-search callback (that runs in Electron
         // main), so it requests a context node with no semantic neighbours. The
         // contract returns {nodeId}; callers want the bare id.

@@ -59,6 +59,7 @@ export const GRAPH_GATEWAY_METHODS = {
     applyDelta: 'graph.applyDelta',
     writeMarkdownFile: 'graph.writeMarkdownFile',
     writePositions: 'graph.writePositions',
+    writeNodeSize: 'graph.writeNodeSize',
     findFileByName: 'graph.findFileByName',
     getPreviewContainedNodeIds: 'graph.getPreviewContainedNodeIds',
     createContextNode: 'graph.createContextNode',
@@ -171,6 +172,20 @@ export namespace GraphWriteMarkdownFile {
 export namespace GraphWritePositions {
     export interface Request {
         readonly positions: Record<string, Position>
+    }
+    export interface Response {
+        readonly written: number
+    }
+}
+
+/**
+ * Persist one node's size (a resized folder, keyed by its directory id) in the
+ * node-layout sidecar, alongside the positions `graph.writePositions` stores.
+ */
+export namespace GraphWriteNodeSize {
+    export interface Request {
+        readonly nodeId: string
+        readonly size: { readonly width: number; readonly height: number }
     }
     export interface Response {
         readonly written: number

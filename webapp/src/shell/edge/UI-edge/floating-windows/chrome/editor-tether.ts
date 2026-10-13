@@ -7,7 +7,7 @@
 const TETHER_CLASS: string = 'cy-floating-window-tether';
 const tethers: WeakMap<HTMLElement, HTMLDivElement> = new WeakMap<HTMLElement, HTMLDivElement>();
 
-export interface TetherPoint {
+interface TetherPoint {
     readonly x: number
     readonly y: number
 }

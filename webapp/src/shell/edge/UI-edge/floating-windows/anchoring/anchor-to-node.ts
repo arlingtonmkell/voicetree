@@ -242,7 +242,7 @@ function updateWindowPosition(shadowNode: cytoscape.NodeSingular, domElement: HT
  * to preserve text selection in editor content
  * Returns the document-level handlers so they can be removed on dispose
  */
-export function attachDragHandlers(
+function attachDragHandlers(
     cy: cytoscape.Core,
     windowElement: HTMLElement,
     shadowNodeId: ShadowNodeId | NodeIdAndFilePath

@@ -109,7 +109,7 @@ function closeOnEscape(e: KeyboardEvent): void {
   if (e.key === 'Escape') hideQuickStartGuide();
 }
 
-export function hideQuickStartGuide(): void {
+function hideQuickStartGuide(): void {
   document.getElementById(GUIDE_ID)?.remove();
   document.removeEventListener('keydown', closeOnEscape);
 }

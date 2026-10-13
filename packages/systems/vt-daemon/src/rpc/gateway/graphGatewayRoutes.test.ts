@@ -161,6 +161,23 @@ describe('graph.* gateway routes (real graphd roundtrip)', () => {
         expect((await client.getFolderState(sid)).folderState).toContainEqual([folder, 'expanded'])
     })
 
+    test('graph.writeNodeSize is observable as the folder size in the projected graph', async () => {
+        const folder = path.join(project, 'sized')
+        await mkdir(folder)
+        await invoke(M.writeMarkdownFile, {
+            absolutePath: path.join(folder, 'inside.md'),
+            body: '# Inside\n',
+            editorId: 'gateway-test',
+        })
+
+        const written = await invoke(M.writeNodeSize, {nodeId: `${folder}/`, size: {width: 420, height: 260}}) as {written: number}
+        expect(written.written).toBe(1)
+
+        const projected = await invoke(M.getProjectedGraph) as {nodes: {id: string; size?: {width: number; height: number}}[]}
+        const folderNode = projected.nodes.find((n) => n.id === `${folder}/`)
+        expect(folderNode?.size).toEqual({width: 420, height: 260})
+    })
+
     // --- Folders (browser-mode daemon-served folder browser) -----------------
 
     test('graph.getFolderTreeSync returns the project root tree + project paths', async () => {
