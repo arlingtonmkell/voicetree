@@ -38,6 +38,13 @@ import { onSettingsChange } from '@/shell/edge/UI-edge/api';
 import type { AutoLayoutOptions, LayoutConfig } from './autoLayoutTypes';
 import { DEFAULT_OPTIONS, DEFAULT_FORCEATLAS2_OPTIONS } from './autoLayoutTypes';
 import { parseLayoutConfig } from './autoLayoutConfig';
+import { computeGentleTidy, type TidyNode } from './gentleTidy';
+import type { Position } from 'cytoscape';
+
+/** Minimum gap (graph units) the tidy leaves between neighbouring nodes and folders. */
+const TIDY_SPACING: number = 40;
+/** Tells the folder frame controller (folderResizeFrame.ts) to let go of hand-sized boxes. */
+const FOLDER_FRAMES_RESET_EVENT: string = 'vt:folder-frames-reset';
 import { registerAutoLayoutTriggers, unregisterAutoLayoutTriggers } from './autoLayoutTriggers';
 import { runLayoutAdapter } from '@/shell/UI/cytoscape-graph-ui/graphviz/layout/engine/runLayoutAdapter';
 
@@ -211,6 +218,48 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
     });
   };
 
+  /** Separate overlapping nodes, folder by folder, then fit the result into view. */
+  const runGentleTidy: () => void = () => {
+    const participants: CollectionReturnValue = getLayoutParticipantElements();
+    // Folders (compounds) are not layout participants themselves, but they give
+    // the tidy its structure: walk the real folder tree and keep only the
+    // participating leaves inside it.
+    const toTidyNode = (node: NodeSingular): TidyNode | null => {
+      if (node.isParent()) {
+        const children: TidyNode[] = node.children().map(toTidyNode).filter((child): child is TidyNode => child !== null);
+        if (children.length === 0) return null;
+        const border: number = parseFloat(node.style('border-width') as string) || 0;
+        return {kind: 'folder', id: node.id(), padding: node.padding() + border, children};
+      }
+      if (!participants.anySame(node)) return null;
+      const position: Position = node.position();
+      return {kind: 'leaf', id: node.id(), x: position.x, y: position.y, width: node.outerWidth(), height: node.outerHeight()};
+    };
+    const roots: TidyNode[] = cy.nodes().orphans()
+      .map(toTidyNode)
+      .filter((node): node is TidyNode => node !== null);
+    const moves: ReturnType<typeof computeGentleTidy> = computeGentleTidy(roots, TIDY_SPACING);
+
+    cy.batch(() => {
+      for (const [nodeId, move] of moves) {
+        if (move.dx === 0 && move.dy === 0) continue;
+        const node: CollectionReturnValue = cy.getElementById(nodeId);
+        const position: Position = node.position();
+        node.position({x: position.x + move.dx, y: position.y + move.dy});
+      }
+    });
+    // The tidy placed folders as boxes that fit their contents: have the folder
+    // frame controller drop hand-made and saved box sizes to match.
+    cy.emit(FOLDER_FRAMES_RESET_EVENT);
+
+    const padding: number = getResponsivePadding(cy, 15);
+    cyFitIntoVisibleViewport(cy, participants, padding, {
+      duration: 300,
+      easing: 'ease-in-out-cubic',
+      complete: () => { onLayoutComplete(); },
+    });
+  };
+
   const runLayout: () => void = () => {
     // If layout already running, queue another run for after it completes
     if (layoutRunning) {
@@ -347,18 +396,14 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
       hasRunInitialLayout = false;
       debouncedRunLayout();
     },
-    // Manual "tidy up" button: full ultimate layout, R-tree pack → Cola → fit.
+    // Manual "tidy up" button: a gentle tidy that keeps the user's arrangement and
+    // only separates overlapping nodes, folder by folder (gentleTidy.ts). The
+    // full force layout re-placed everything from scratch, ignoring folders.
     runColaLayout: () => {
       if (layoutRunning) { layoutQueued = true; return; }
       if (cy.nodes().length === 0) return;
       layoutRunning = true;
-      layoutSafetyTimeout = setTimeout(() => {
-        if (layoutRunning) {
-          console.error(`[AutoLayout] ⚠️ Safety timeout (${LAYOUT_SAFETY_TIMEOUT_MS}ms) — tidy callback never fired, force-resetting.`);
-          onLayoutComplete();
-        }
-      }, LAYOUT_SAFETY_TIMEOUT_MS);
-      runFullUltimateLayout();
+      runGentleTidy();
     },
   });
 

@@ -441,6 +441,25 @@ export function setupFolderResize(
         }
     }
 
+    // "Tidy layout" lays folders out as boxes that fit their contents (autoLayout.ts
+    // emits this once it has moved the nodes): drop every hand-made or saved box
+    // size so each folder is drawn at exactly that fit, and save the fitted sizes.
+    cy.on('vt:folder-frames-reset', (): void => {
+        for (const folderId of [...pinnedFrames.keys()]) unpin(folderId);
+        savedFrames.clear();
+        saveFolderFrames(savedFrames);
+        cy.nodes('node[?isFolderNode]').forEach((folder: NodeSingular): void => {
+            if (!isExpandedFolder(folder)) return;
+            folder.removeData('folderWidth folderHeight');
+            const geometry: FolderGeometry | null = measure(folder);
+            if (geometry === null) return;
+            void window.hostAPI?.main.saveNodeSize(folder.id(), {
+                width: geometry.content.x2 - geometry.content.x1,
+                height: geometry.content.y2 - geometry.content.y1,
+            });
+        });
+    });
+
     // A dropped node may have pushed a box edge out: save the boxes around it.
     cy.on('free', 'node', (evt: EventObject): void => {
         const folderIds: string[] = enclosingFolderIds(evt.target as NodeSingular);

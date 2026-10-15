@@ -33,6 +33,9 @@ import { getLayout, dispatchSetZoom, dispatchSetPan } from '@vt/graph-state/stat
  * (and often a horizontal component); mouse wheels emit large integer deltas
  * along a single axis.
  */
+/** Zoom per mouse-wheel notch at sensitivity 1, as a log10 step: 10^0.07 ≈ ×1.17. */
+const MOUSE_WHEEL_NOTCH_ZOOM_LOG10: number = 0.07;
+
 function looksLikeMouseWheel(e: WheelEvent): boolean {
     // deltaMode 1 (LINE) or 2 (PAGE) is always a discrete mouse wheel.
     if (e.deltaMode !== 0) return true;
@@ -223,18 +226,31 @@ export class NavigationGestureService {
             delta = this.signum(delta) * 5;
         }
 
-        // Base calculation (matches Cytoscape's formula), scaled by user sensitivity
-        let diff: number = (delta / -250) * this.zoomSensitivity;
+        // A discrete mouse wheel zooms a fixed step per notch. Cytoscape's formula
+        // (delta / -250, then ÷ the device's notch size × 3 for "inaccurate"
+        // devices) works out to ~3% per notch on a standard 100-px wheel — two
+        // dozen notches to double the zoom. Count notches instead: one per event
+        // until the device's notch size is known, then delta / notch size.
+        let diff: number;
+        if (looksLikeMouseWheel(e)) {
+            const notchSize: number = this.inaccurateScrollDevice ? this.inaccurateScrollFactor : Math.abs(delta);
+            const notches: number = delta / notchSize;
+            diff = -notches * MOUSE_WHEEL_NOTCH_ZOOM_LOG10 * this.zoomSensitivity;
+        } else {
+            // Trackpads and fine-grained wheels: Cytoscape's continuous formula,
+            // scaled by user sensitivity.
+            diff = (delta / -250) * this.zoomSensitivity;
 
-        // Normalize inaccurate devices
-        if (this.inaccurateScrollDevice) {
-            diff /= this.inaccurateScrollFactor;
-            diff *= 3;
-        }
+            // Normalize inaccurate devices
+            if (this.inaccurateScrollDevice) {
+                diff /= this.inaccurateScrollFactor;
+                diff *= 3;
+            }
 
-        // Firefox Linux/Windows fix: deltaMode=1 means LINE units, not pixels
-        if (e.deltaMode === 1) {
-            diff *= 33;
+            // Firefox Linux/Windows fix: deltaMode=1 means LINE units, not pixels
+            if (e.deltaMode === 1) {
+                diff *= 33;
+            }
         }
 
         // Always anchor at cursor; track latest cursor position for the animation.
