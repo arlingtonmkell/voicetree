@@ -209,6 +209,22 @@
   display: none;
 }
 
+/* "Note" tag at the right end of a text box's grip: the counterpart of the
+ * violet "Agent" tag on agent windows (terminal-chrome.css). */
+.cy-floating-window-note-tag {
+  position: absolute;
+  right: 10px;
+  top: 1px;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--editor-accent-color, var(--muted-foreground));
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 /* Tether: line from a detached editor box back to its node */
 .cy-floating-window-tether {
   position: absolute;

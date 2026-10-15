@@ -183,6 +183,50 @@
 }
 
 /* =============================================================================
+ * Agent windows
+ * A terminal running an agent is framed and tagged in violet so it never reads
+ * as a note's text box (which is a plain card with its node's colour bar).
+ * ============================================================================= */
+
+.cy-floating-window-terminal.is-agent-window {
+  --agent-accent: #8b5cf6;
+  border: 2px solid var(--agent-accent);
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-accent) 18%, transparent), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.is-agent-window .terminal-title-bar {
+  background: color-mix(in srgb, var(--agent-accent) 22%, var(--muted));
+  border-bottom-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+}
+
+.agent-window-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: 0 8px 0 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.agent-window-tag-pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--agent-accent);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.agent-window-tag-name {
+  color: var(--foreground);
+  opacity: 0.85;
+}
+
+/* =============================================================================
  * Active Terminal Highlighting (Gold Border)
  * Applied when terminal is selected/navigated to
  * This renders ON the DOM element, not behind it on cytoscape canvas
@@ -197,6 +241,14 @@
 .dark .cy-floating-window-terminal.terminal-active {
   border: 2px solid rgba(184, 134, 11, 0.6);
   box-shadow: 0 0 6px rgba(184, 134, 11, 0.25), 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* A selected agent window keeps its violet frame (what it is) and shows the
+ * gold selection as a halo (that it is selected). */
+.cy-floating-window-terminal.is-agent-window.terminal-active,
+.dark .cy-floating-window-terminal.is-agent-window.terminal-active {
+  border: 2px solid var(--agent-accent);
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.7), 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 /* =============================================================================

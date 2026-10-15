@@ -129,6 +129,11 @@ export function createWindowChrome(
         nodeHandle.className = 'cy-floating-window-node-handle';
         nodeHandle.title = 'Drag to pull the node out from under this box';
         moveGrip.appendChild(nodeHandle);
+        // Names the window as a note, the counterpart of an agent window's "Agent" tag.
+        const kindTag: HTMLSpanElement = document.createElement('span');
+        kindTag.className = 'cy-floating-window-note-tag';
+        kindTag.textContent = 'Note';
+        moveGrip.appendChild(kindTag);
         appendChromeChild(moveGrip);
     }
 

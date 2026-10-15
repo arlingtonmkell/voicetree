@@ -54,6 +54,13 @@ export function createTerminalTitleBar(
     const attachedNodeId: string = terminal.attachedToContextNodeId;
     const hasContextNode: boolean = isContextNodeId(attachedNodeId);
 
+    // A terminal attached to a context node is an agent. Mark the window so it
+    // reads as an agent at a glance, unlike a note's text box (terminal-chrome.css).
+    if (hasContextNode) {
+        windowElement.classList.add('is-agent-window');
+        titleBar.appendChild(createAgentTag(terminal));
+    }
+
     // Create context dropdown for terminals with context nodes
     let contextPanel: HTMLDivElement | null = null;
     if (hasContextNode) {
@@ -82,6 +89,27 @@ export function createTerminalTitleBar(
     titleBar.appendChild(trafficLights);
 
     return { titleBar, contextPanel };
+}
+
+/** "AGENT" pill plus the agent's name and kind, e.g. "Aki · Cloud". */
+function createAgentTag(terminal: TerminalData): HTMLSpanElement {
+    const tag: HTMLSpanElement = document.createElement('span');
+    tag.className = 'agent-window-tag';
+    tag.title = 'Agent: works in this terminal and writes its results as nodes';
+
+    const pill: HTMLSpanElement = document.createElement('span');
+    pill.className = 'agent-window-tag-pill';
+    pill.textContent = 'Agent';
+    tag.appendChild(pill);
+
+    const who: string = [terminal.agentName, terminal.agentTypeName].filter((part: string): boolean => part !== '').join(' · ');
+    if (who !== '') {
+        const name: HTMLSpanElement = document.createElement('span');
+        name.className = 'agent-window-tag-name';
+        name.textContent = who;
+        tag.appendChild(name);
+    }
+    return tag;
 }
 
 /**
