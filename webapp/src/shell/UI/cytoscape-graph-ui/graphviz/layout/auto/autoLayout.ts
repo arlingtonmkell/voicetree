@@ -40,11 +40,21 @@ import { DEFAULT_OPTIONS, DEFAULT_FORCEATLAS2_OPTIONS } from './autoLayoutTypes'
 import { parseLayoutConfig } from './autoLayoutConfig';
 import { computeGentleTidy, type TidyNode } from './gentleTidy';
 import type { Position } from 'cytoscape';
+import * as O from 'fp-ts/lib/Option.js';
+import type { NodeIdAndFilePath } from '@vt/graph-model/graph';
+import { getEditorByNodeId } from '@/shell/edge/UI-edge/state/stores/EditorStore';
+import { ANCHORED_EDITOR_WIDTH } from '@/shell/edge/UI-edge/floating-windows/anchoring/types';
 
 /** Minimum gap (graph units) the tidy leaves between neighbouring nodes and folders. */
 const TIDY_SPACING: number = 40;
 /** Tells the folder frame controller (folderResizeFrame.ts) to let go of hand-sized boxes. */
 const FOLDER_FRAMES_RESET_EVENT: string = 'vt:folder-frames-reset';
+/** Tells an open text box that was dragged off its node to go back on it (AnchoredEditor.ts). */
+const REATTACH_BOX_EVENT: string = 'vt:reattach-box';
+/** Height a text box opens at before it sizes itself to its text (FloatingEditorCRUD). */
+const CLOSED_BOX_HEIGHT: number = 400;
+/** How long "Tidy around boxes" lets moved boxes re-fit before its settling pass. */
+const BOX_TIDY_SETTLE_MS: number = 400;
 import { registerAutoLayoutTriggers, unregisterAutoLayoutTriggers } from './autoLayoutTriggers';
 import { runLayoutAdapter } from '@/shell/UI/cytoscape-graph-ui/graphviz/layout/engine/runLayoutAdapter';
 
@@ -218,8 +228,29 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
     });
   };
 
+  /**
+   * A node's footprint for "Tidy around boxes": its text box — the open one, or
+   * the size one opens at — so opening any box afterwards overlaps nothing. A box
+   * that was dragged off its node is put back on it first.
+   */
+  const boxFootprint = (node: NodeSingular): {readonly width: number; readonly height: number} => {
+    if (!node.id().endsWith('.md')) return {width: node.outerWidth(), height: node.outerHeight()};
+    const editor = getEditorByNodeId(node.id() as NodeIdAndFilePath);
+    const box: HTMLElement | undefined = O.isSome(editor) ? editor.value.ui?.windowElement : undefined;
+    if (box === undefined) return {width: ANCHORED_EDITOR_WIDTH, height: CLOSED_BOX_HEIGHT};
+    box.dispatchEvent(new CustomEvent(REATTACH_BOX_EVENT));
+    // Boxes scale by CSS transform, so their layout size is already in graph units.
+    return {width: box.offsetWidth, height: box.offsetHeight};
+  };
+
   /** Separate overlapping nodes, folder by folder, then fit the result into view. */
-  const runGentleTidy: () => void = () => {
+  const runGentleTidy: (
+    footprintOf?: (node: NodeSingular) => {readonly width: number; readonly height: number},
+    afterComplete?: () => void,
+  ) => void = (
+    footprintOf = (node: NodeSingular) => ({width: node.outerWidth(), height: node.outerHeight()}),
+    afterComplete,
+  ) => {
     const participants: CollectionReturnValue = getLayoutParticipantElements();
     // Folders (compounds) are not layout participants themselves, but they give
     // the tidy its structure: walk the real folder tree and keep only the
@@ -233,7 +264,8 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
       }
       if (!participants.anySame(node)) return null;
       const position: Position = node.position();
-      return {kind: 'leaf', id: node.id(), x: position.x, y: position.y, width: node.outerWidth(), height: node.outerHeight()};
+      const footprint: {readonly width: number; readonly height: number} = footprintOf(node);
+      return {kind: 'leaf', id: node.id(), x: position.x, y: position.y, width: footprint.width, height: footprint.height};
     };
     const roots: TidyNode[] = cy.nodes().orphans()
       .map(toTidyNode)
@@ -256,7 +288,10 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
     cyFitIntoVisibleViewport(cy, participants, padding, {
       duration: 300,
       easing: 'ease-in-out-cubic',
-      complete: () => { onLayoutComplete(); },
+      complete: () => {
+        onLayoutComplete();
+        afterComplete?.();
+      },
     });
   };
 
@@ -399,11 +434,25 @@ export function enableAutoLayout(cy: Core, options: AutoLayoutOptions = {}): () 
     // Manual "tidy up" button: a gentle tidy that keeps the user's arrangement and
     // only separates overlapping nodes, folder by folder (gentleTidy.ts). The
     // full force layout re-placed everything from scratch, ignoring folders.
-    runColaLayout: () => {
+    runColaLayout: (fitTo: 'nodes' | 'boxes' = 'nodes') => {
       if (layoutRunning) { layoutQueued = true; return; }
       if (cy.nodes().length === 0) return;
       layoutRunning = true;
-      runGentleTidy();
+      if (fitTo === 'nodes') {
+        runGentleTidy();
+        return;
+      }
+      // Moving a text box can resize it (it re-wraps and re-fits its text), and a
+      // box put back on its node takes a moment to size the node to itself. A
+      // second pass once they have settled separates anything the first left
+      // touching; the tidy is idempotent, so it moves nothing otherwise.
+      runGentleTidy(boxFootprint, () => {
+        window.setTimeout(() => {
+          if (layoutRunning) return;
+          layoutRunning = true;
+          runGentleTidy(boxFootprint);
+        }, BOX_TIDY_SETTLE_MS);
+      });
     },
   });
 

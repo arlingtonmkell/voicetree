@@ -13,7 +13,7 @@ import {setPendingEditorFocusPan} from '@/shell/edge/UI-edge/state/stores/Pendin
 import {updateWindowFromZoom} from '@/shell/edge/UI-edge/floating-windows/chrome/update-window-from-zoom';
 import {updateShadowNodeDimensions} from '@/shell/edge/UI-edge/floating-windows/chrome/setup-resize-observer';
 import {cleanupRegistry} from '@/shell/edge/UI-edge/floating-windows/anchoring/cytoscape-floating-windows';
-import {attachWindowDrag, moveNodeDragBehaviour, type WindowDragBehaviour} from '@/shell/edge/UI-edge/floating-windows/anchoring/anchor-to-node';
+import {attachWindowDrag, moveNodeDragBehaviour} from '@/shell/edge/UI-edge/floating-windows/anchoring/anchor-to-node';
 import {removeEditorTether} from '@/shell/edge/UI-edge/floating-windows/chrome/editor-tether';
 import {markNodeDirty} from '@/shell/UI/cytoscape-graph-ui/graphviz/layout/auto/autoLayout';
 import {cySmartCenter} from '@/utils/responsivePadding';
@@ -200,6 +200,10 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
         syncWindowToNode();
     };
     cyNode.on('position', syncWindowToNode);
+    // "Tidy around boxes" lays out each box on its node: put a detached box back first.
+    windowElement.addEventListener('vt:reattach-box', (): void => {
+        if (isDetached()) setBoxOffset({x: 0, y: 0}, true);
+    });
 
     // ResizeObserver: sync DOM size → Cy node dimensions for Cola layout
     let resizeObserver: ResizeObserver | undefined;
@@ -221,7 +225,7 @@ function anchorEditorToRealNode(cy: Core, editor: EditorData, nodeId: NodeIdAndF
     // Dragging the box's chrome moves the box alone. The node handle on the grip
     // pulls the node out from under the box instead, leaving the box where it is.
     // (A folder's box is never detached, so any drag moves the folder with its box.)
-    const moveNode: WindowDragBehaviour<cytoscape.Position> = moveNodeDragBehaviour(cy, nodeId);
+    const moveNode = moveNodeDragBehaviour(cy, nodeId);
     let nodeWasPulledOut: boolean = false;
     const {handleMouseMove, handleMouseUp} = attachWindowDrag<BoxOrNodeDragStart>(windowElement, {
         begin: (pressed: Element) => {

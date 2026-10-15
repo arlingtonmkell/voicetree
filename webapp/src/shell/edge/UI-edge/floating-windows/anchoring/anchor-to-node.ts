@@ -260,7 +260,7 @@ const WINDOW_DRAG_HANDLE_SELECTOR: string =
  * null to ignore the gesture); `move` receives that snapshot plus the pointer's
  * travel in graph units.
  */
-export interface WindowDragBehaviour<Start> {
+interface WindowDragBehaviour<Start> {
     readonly begin: (pressed: Element) => Start | null
     readonly move: (start: Start, graphDx: number, graphDy: number) => void
     readonly end: () => void

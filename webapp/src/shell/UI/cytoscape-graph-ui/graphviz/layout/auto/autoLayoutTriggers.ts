@@ -1,7 +1,7 @@
 import type { Core } from 'cytoscape';
 
 type AutoLayoutTriggerSet = {
-  readonly runColaLayout: () => void
+  readonly runColaLayout: (fitTo?: 'nodes' | 'boxes') => void
   readonly markDirtyNode: (nodeId: string) => void
   readonly runFullLayout: () => void
 }
@@ -18,11 +18,12 @@ export function unregisterAutoLayoutTriggers(cy: Core): void {
 }
 
 /**
- * Trigger a one-shot cola layout run for the given cytoscape instance.
- * Use this for user-initiated "tidy up" / reorganize layout.
+ * Trigger the user-initiated "tidy" for the given cytoscape instance. `fitTo`
+ * picks each note's footprint: its node ('nodes'), or its text box, open or not
+ * ('boxes'), so the boxes end up clear of one another.
  */
-export function triggerColaLayout(cy: Core): void {
-  layoutTriggers.get(cy)?.runColaLayout();
+export function triggerColaLayout(cy: Core, fitTo: 'nodes' | 'boxes' = 'nodes'): void {
+  layoutTriggers.get(cy)?.runColaLayout(fitTo);
 }
 
 /**

@@ -44,6 +44,9 @@ const SECTIONS: readonly { readonly title: string; readonly rows: readonly (read
     rows: [
       ['Pan / zoom', 'Drag the canvas / scroll'],
       ['Lost the graph', 'Space fits to the last node; the minimap is bottom-right'],
+      ['Open or close every note', 'The stacked-pages button, top right'],
+      ['Untangle overlapping nodes', 'Tidy layout (four squares)'],
+      ['Untangle overlapping text boxes', 'Tidy around boxes (two offset boxes)'],
       ['Settings', 'Ctrl+,'],
     ],
   },

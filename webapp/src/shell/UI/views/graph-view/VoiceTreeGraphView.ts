@@ -77,6 +77,7 @@ import {getLayoutStoreSingleton} from '@vt/graph-state/state/layoutStore';
 import {updateSpeedDialDarkMode} from '@/shell/UI/views/ui-controls/SpeedDialMenu';
 import {showQuickStartGuideOnFirstOpen, toggleQuickStartGuide} from '@/shell/UI/views/components/overlays/quickStartGuide';
 import {hostCapabilities} from '@/shell/runtimeCapabilities';
+import {toggleAllNodeEditors} from '@/shell/edge/UI-edge/graph/actions/openAllNodeEditors';
 import {createRecentNodeTabsBar} from '@/shell/UI/views/ui-controls/RecentNodeTabsBar';
 import {createTerminalTreeSidebar} from '@/shell/UI/views/treeStyleTerminalTabs/TerminalTreeSidebar';
 import {createFolderTreeSidebar} from '@/shell/UI/views/folderTree/FolderTreeSidebar';
@@ -200,7 +201,15 @@ const renderGraphView = ({
                 : undefined,
             onFeedback: () => void collectFeedback(),
             onFolderTree: () => toggleFolderTreeSidebar(),
-            onHelp: () => toggleQuickStartGuide()
+            onHelp: () => toggleQuickStartGuide(),
+            onToggleAllNotes: () => {
+                const cy: Core | undefined = getCy();
+                if (cy) void toggleAllNodeEditors(cy);
+            },
+            onTidyAroundBoxes: () => {
+                const cy: Core | undefined = getCy();
+                if (cy) triggerColaLayout(cy, 'boxes');
+            }
         }
     });
     showQuickStartGuideOnFirstOpen();

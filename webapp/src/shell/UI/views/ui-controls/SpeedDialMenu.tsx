@@ -25,9 +25,11 @@ export interface SpeedDialCallbacks {
   onFeedback?: () => void;
   onFolderTree?: () => void;
   onHelp?: () => void;
+  onToggleAllNotes?: () => void;
+  onTidyAroundBoxes?: () => void;
 }
 
-type IconName = 'sun' | 'moon' | 'layout' | 'settings' | 'bar-chart' | 'message-square' | 'folder' | 'help';
+type IconName = 'sun' | 'moon' | 'layout' | 'settings' | 'bar-chart' | 'message-square' | 'folder' | 'help' | 'notes' | 'layout-boxes';
 
 // =============================================================================
 // SVG Icon Paths
@@ -52,6 +54,16 @@ const ICON_PATHS: Record<IconName, string[]> = {
   'bar-chart': ['M12 20V10', 'M18 20V4', 'M6 20v-4'],
   'message-square': ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
   folder: ['M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z'],
+  // Stacked pages: open / close every note's text box.
+  notes: [
+    'M8 3h10a2 2 0 0 1 2 2v12',
+    'M4 7h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z',
+    'M5 12h8', 'M5 16h6',
+  ],
+  // Two wide boxes with a gap: tidy so the text boxes clear one another.
+  'layout-boxes': [
+    'M2 4h12v7H2z', 'M10 14h12v7H10z',
+  ],
   help: [
     'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z',
     'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3',
@@ -114,6 +126,18 @@ function SpeedDialMenuInternal({ callbacks, initialDarkMode }: { readonly callba
       label: 'Tidy layout',
       iconName: 'layout',
       onClick: callbacks.onColaLayout,
+    },
+    {
+      id: 'tidy-around-boxes',
+      label: 'Tidy around boxes',
+      iconName: 'layout-boxes',
+      onClick: callbacks.onTidyAroundBoxes,
+    },
+    {
+      id: 'toggle-all-notes',
+      label: 'Open / close all notes',
+      iconName: 'notes',
+      onClick: callbacks.onToggleAllNotes,
     },
     {
       id: 'settings',
