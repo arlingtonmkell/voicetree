@@ -8,7 +8,6 @@ export {
     type ResolvedAgent,
     flattenAgentTree,
     resolveDefaultAgent,
-    resolveFolderAgent,
     mapAgentTreeByCommand,
 } from './pure/settings/agentTree'
 

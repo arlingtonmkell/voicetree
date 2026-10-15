@@ -1,7 +1,8 @@
 /** Terminal Flow - V2: Uses types.ts with flat TerminalData type. IDs derived, ui populated after DOM creation. */
 import type { NodeIdAndFilePath, GraphNode } from "@vt/graph-model/graph";
 import type { VTSettings, AgentConfig } from "@vt/graph-model/settings";
-import { resolveDefaultAgent, resolveFolderAgent, mapAgentTreeByCommand, type ResolvedAgent } from "@vt/graph-model/settings";
+import { resolveDefaultAgent, mapAgentTreeByCommand, type ResolvedAgent } from "@vt/graph-model/settings";
+import { resolveFolderAgent } from "@/shell/edge/UI-edge/floating-windows/terminals/resolveFolderAgent";
 import { showAgentCommandEditor } from "@/shell/edge/UI-edge/graph/popups/agentCommandEditorPopup";
 import type { Core } from "cytoscape";
 import '@/shell/hostApi.d.ts';
