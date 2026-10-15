@@ -51,14 +51,16 @@
   z-index: 3;
 }
 
-/* Editor-specific window styling — match card visual language */
+/* Editor-specific window styling — match card visual language. A note's box is
+ * edged in its node's colour, so notes read apart from agent windows (violet)
+ * and subagent windows (teal) — see terminal-chrome.css. */
 .cy-floating-window-editor {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2px solid color-mix(in srgb, var(--editor-accent-color, #4a9eff) 75%, transparent);
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .cy-floating-window-editor:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--editor-accent-color, #4a9eff);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 

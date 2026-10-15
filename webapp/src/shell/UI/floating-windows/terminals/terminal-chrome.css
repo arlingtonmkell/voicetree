@@ -195,6 +195,13 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agent-accent) 18%, transparent), 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
+/* A subagent (started by another agent, not by you) is teal with a dashed frame:
+ * a different colour for what it is, and a broken line for "one level down". */
+.cy-floating-window-terminal.is-agent-window.is-subagent-window {
+  --agent-accent: #14b8a6;
+  border-style: dashed;
+}
+
 .is-agent-window .terminal-title-bar {
   background: color-mix(in srgb, var(--agent-accent) 22%, var(--muted));
   border-bottom-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
@@ -247,7 +254,8 @@
  * gold selection as a halo (that it is selected). */
 .cy-floating-window-terminal.is-agent-window.terminal-active,
 .dark .cy-floating-window-terminal.is-agent-window.terminal-active {
-  border: 2px solid var(--agent-accent);
+  border-width: 2px;
+  border-color: var(--agent-accent);
   box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.7), 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 

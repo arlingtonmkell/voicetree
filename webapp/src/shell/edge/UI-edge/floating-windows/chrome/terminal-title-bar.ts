@@ -58,6 +58,7 @@ export function createTerminalTitleBar(
     // reads as an agent at a glance, unlike a note's text box (terminal-chrome.css).
     if (hasContextNode) {
         windowElement.classList.add('is-agent-window');
+        if (isSubagent(terminal)) windowElement.classList.add('is-subagent-window');
         titleBar.appendChild(createAgentTag(terminal));
     }
 
@@ -91,18 +92,38 @@ export function createTerminalTitleBar(
     return { titleBar, contextPanel };
 }
 
-/** "AGENT" pill plus the agent's name and kind, e.g. "Aki · Cloud". */
+/**
+ * A subagent was spawned by another agent: its parent is an agent terminal. A
+ * scoped external caller (an id with a '/', e.g. a voice or CLI spawn) is not an
+ * agent, so what it starts is a top-level agent.
+ */
+function isSubagent(terminal: TerminalData): boolean {
+    const parent: string | null = terminal.parentTerminalId;
+    return parent !== null && parent !== '' && !parent.includes('/');
+}
+
+/**
+ * Pill plus the agent's name and kind, e.g. "AGENT  Aki · Cloud", or for an agent
+ * started by another agent "SUBAGENT  Ama · Link  ← Aki-rl0".
+ */
 function createAgentTag(terminal: TerminalData): HTMLSpanElement {
+    const subagent: boolean = isSubagent(terminal);
     const tag: HTMLSpanElement = document.createElement('span');
     tag.className = 'agent-window-tag';
-    tag.title = 'Agent: works in this terminal and writes its results as nodes';
+    tag.title = subagent
+        ? `Subagent: started by agent ${terminal.parentTerminalId ?? ''}; works in this terminal and writes its results as nodes`
+        : 'Agent: works in this terminal and writes its results as nodes';
 
     const pill: HTMLSpanElement = document.createElement('span');
     pill.className = 'agent-window-tag-pill';
-    pill.textContent = 'Agent';
+    pill.textContent = subagent ? 'Subagent' : 'Agent';
     tag.appendChild(pill);
 
-    const who: string = [terminal.agentName, terminal.agentTypeName].filter((part: string): boolean => part !== '').join(' · ');
+    const who: string = [
+        terminal.agentName,
+        terminal.agentTypeName,
+    ].filter((part: string): boolean => part !== '').join(' · ')
+        + (subagent ? `  ← ${terminal.parentTerminalId}` : '');
     if (who !== '') {
         const name: HTMLSpanElement = document.createElement('span');
         name.className = 'agent-window-tag-name';
